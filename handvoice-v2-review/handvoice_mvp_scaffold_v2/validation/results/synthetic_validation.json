@@ -1,0 +1,80 @@
+{
+  "validation_type": "synthetic engineering validation",
+  "clinical_claims_supported": false,
+  "scope_statement": "Tests deterministic event-detection robustness and dual-task-cost arithmetic only; it does not establish performance in older adults or any disease population.",
+  "acceptance_thresholds": {
+    "event_recall_min": 0.95,
+    "event_precision_min": 0.95,
+    "timing_mae_ms_max": 50.0,
+    "count_error_rate_max": 0.05
+  },
+  "scenarios": [
+    {
+      "name": "clean_30fps",
+      "replicates": 20,
+      "truth_events": 380,
+      "detected_events": 380,
+      "matched_events": 380,
+      "recall": 1.0,
+      "precision": 1.0,
+      "timing_mae_ms": 0,
+      "count_error_rate": 0.0,
+      "passed": true
+    },
+    {
+      "name": "low_rate_15fps",
+      "replicates": 20,
+      "truth_events": 380,
+      "detected_events": 380,
+      "matched_events": 380,
+      "recall": 1.0,
+      "precision": 1.0,
+      "timing_mae_ms": 17.368,
+      "count_error_rate": 0.0,
+      "passed": true
+    },
+    {
+      "name": "jitter_noise",
+      "replicates": 20,
+      "truth_events": 380,
+      "detected_events": 380,
+      "matched_events": 380,
+      "recall": 1.0,
+      "precision": 1.0,
+      "timing_mae_ms": 5.211,
+      "count_error_rate": 0.0,
+      "passed": true
+    },
+    {
+      "name": "ten_percent_dropout",
+      "replicates": 20,
+      "truth_events": 380,
+      "detected_events": 380,
+      "matched_events": 380,
+      "recall": 1.0,
+      "precision": 1.0,
+      "timing_mae_ms": 6.574,
+      "count_error_rate": 0.0,
+      "passed": true
+    },
+    {
+      "name": "reversed_with_duplicates",
+      "replicates": 20,
+      "truth_events": 380,
+      "detected_events": 380,
+      "matched_events": 380,
+      "recall": 1.0,
+      "precision": 1.0,
+      "timing_mae_ms": 2.779,
+      "count_error_rate": 0.0,
+      "passed": true
+    }
+  ],
+  "dual_task_cost_checks": {
+    "passed": true,
+    "higher_is_better_percent_cost": 19.999999999999996,
+    "lower_is_better_percent_cost": 20.0,
+    "zero_baseline_status": "baseline_unstable"
+  },
+  "passed": true
+}

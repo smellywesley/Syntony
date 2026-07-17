@@ -1,0 +1,120 @@
+# HandVoice Competition MVP
+
+A deliberately narrow, executable scaffold for testing one measurement hypothesis:
+
+> Can synchronized right-hand tapping and `/pa-ta-ka/` reveal measurable, bidirectional dual-task interference beyond either task alone?
+
+## Frozen scope
+
+The default session creates **three first-pass recordings only**:
+
+1. Right-hand tapping alone
+2. `/pa-ta-ka/` alone
+3. Right-hand tapping plus `/pa-ta-ka/`
+
+A second repetition is optional and can be created only after the first capture is accepted.
+
+Excluded from this competition MVP:
+
+- Counting tasks
+- Left-hand testing
+- Longitudinal analytics
+- Clinical classification
+- Medication guidance
+- Autonomous diagnostic claims
+
+Temporal coupling remains **exploratory**.
+
+## What is executable
+
+- API-key-protected FastAPI endpoints
+- Race-safe participant session numbering in PostgreSQL
+- Protocol validation through JSON Schema and exact-frequency semantic checks
+- Local media path containment, SHA-256 verification and `ffprobe` validation
+- Hand-signal derivation from 21-landmark frames
+- Tap-event and rhythm extraction
+- Raw-audio energy/VAD baseline or supplied annotated DDK events
+- Overlap-safe speech timing features
+- Direction-aware bidirectional dual-task cost
+- Maximum-cardinality, minimum-total-lag event matching
+- Exploratory event coincidence
+- Synchronized HTML timeline visualization
+- Smartphone-browser camera/microphone capture with local MediaPipe hand landmarks
+- Bounded, generated-key media upload with SHA-256 integrity metadata
+- Deterministic synthetic perturbation validation with machine-readable results
+- Optional repeat scheduling after accepted capture
+- PostgreSQL/SQLite persistence
+
+## Important evidence boundary
+
+The browser capture app performs MediaPipe hand-landmark inference locally and submits landmarks with the synchronized recording. Raw audio can be decoded and processed by the baseline energy detector. This is an **engineering-validation prototype**: it has no human-participant evidence and makes no claim of clinical validity, Parkinson's detection, or performance in older adults.
+
+## API flow
+
+```text
+POST /v1/participants
+POST /v1/sessions
+POST /v1/media
+POST /v1/task-instances/{id}/measure
+GET  /v1/sessions/{id}/report
+GET  /v1/sessions/{id}/visualization
+POST /v1/task-instances/{id}/repeat   # optional after acceptance
+```
+
+All `/v1` endpoints require:
+
+```text
+X-HandVoice-API-Key: <configured key>
+```
+
+## Quick start
+
+```powershell
+cd handvoice_mvp_scaffold_v2
+py -3.11 -m venv .venv
+Set-ExecutionPolicy -Scope Process Bypass
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+$env:HANDVOICE_API_KEY = "local-development-only-change-me"
+pytest
+uvicorn services.api.app.main:app --reload
+```
+
+Open `http://127.0.0.1:8000/capture/` for the capture interface or `http://127.0.0.1:8000/docs` for the API.
+
+## Verified status
+
+```text
+33 passed
+```
+
+The test suite includes adversarial regression tests for the greedy coupling failure, overlapping VAD intervals, duplicate protocol codes, malformed hand landmarks, A/V start skew, active-window drift, storage-path escape, bounded upload, authorization, synchronous measurement, DTC, visualization, conditional repeat creation, and the synthetic validation harness.
+
+## Engineering validation
+
+```powershell
+python scripts/run_synthetic_validation.py
+```
+
+This tests known synthetic tap-event ground truth under frame-rate, jitter, noise, dropout, duplicate-timestamp and ordering perturbations. It validates software behavior only; see `docs/HandVoice_Conference_Validation_Plan_v1.md` for the claim boundary and human-evidence ladder.
+
+## Docker
+
+The Docker configuration is **local competition development only**. PostgreSQL is not published to the host, Redis and the nonfunctional worker have been removed, and the API binds to `127.0.0.1:8000`.
+
+```powershell
+Copy-Item .env.example .env
+docker compose up --build
+```
+
+## Canonical documentation
+
+- `docs/HandVoice_Canonical_Competition_MVP_v4.md` — controlling scope and architecture
+- `docs/HandVoice_Evidence_Appendix_v1.md` — research evidence only
+- `docs/api-flow.md` — executable route sequence
+- `docs/architecture-decisions.md` — current ADRs
+
+- `docs/HandVoice_Conference_Validation_Plan_v1.md` - frozen non-clinical validation and claim boundary
+
+Earlier broad architecture documents are superseded for competition implementation.

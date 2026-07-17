@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#071d2b" />
+    <title>HandVoice Capture</title>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">Synchronized functional measurement</p>
+        <h1>HandVoice</h1>
+        <p class="lede">Three tasks. Fifteen seconds each. No diagnosis.</p>
+      </header>
+
+      <section class="panel setup" aria-labelledby="setup-title">
+        <h2 id="setup-title">Start a session</h2>
+        <label>API key <input id="api-key" type="password" autocomplete="off" /></label>
+        <label>Study ID <input id="study-id" value="HV-FEASIBILITY" maxlength="100" /></label>
+        <label>Participant reference <input id="participant-ref" placeholder="e.g. demo-001" maxlength="255" /></label>
+        <button id="start-session" type="button">Connect camera and create session</button>
+      </section>
+
+      <section class="capture-grid" hidden id="capture-area">
+        <div class="video-shell">
+          <video id="preview" autoplay muted playsinline></video>
+          <canvas id="overlay"></canvas>
+          <div class="timer" id="timer" aria-live="polite">Ready</div>
+        </div>
+        <aside class="panel task-panel">
+          <p class="task-code" id="task-code">T01</p>
+          <h2 id="task-name">Right-hand tapping</h2>
+          <p id="task-instruction"></p>
+          <ol id="task-list"></ol>
+          <button id="record-task" type="button">Record current task</button>
+        </aside>
+      </section>
+
+      <section class="panel status-panel" aria-live="polite">
+        <h2>Status</h2>
+        <p id="status">Waiting to begin.</p>
+        <div id="results" hidden></div>
+      </section>
+
+      <footer>
+        Research demonstrator only. Functional measurements are not medical advice and have not been clinically validated.
+      </footer>
+    </main>
+    <script type="module" src="/src/app.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,48 @@
+schema_version: 1.1.0
+protocol_version: 1.1.0
+positioning: functional_measurement_not_diagnosis
+timing:
+  pre_roll_ms: 2000
+  active_ms: 10000
+  post_roll_ms: 3000
+initial_repetitions: 1
+max_repetitions: 2
+repeat_policy: accepted_first_capture_only
+equal_priority_instruction_required: true
+task_definitions:
+- code: T01
+  name: right_tapping
+  condition: single
+  hand: right
+  speech_task: null
+- code: T02
+  name: ddk_pataka
+  condition: single
+  hand: null
+  speech_task: ddk_pataka
+- code: T03
+  name: right_tapping_ddk
+  condition: dual
+  hand: right
+  speech_task: ddk_pataka
+sequences:
+  A: [T01, T02, T03]
+  B: [T02, T01, T03]
+quality_defaults:
+  video:
+    accept_valid_frame_fraction: 0.85
+    reject_valid_frame_fraction: 0.70
+    accept_median_fps: 24.0
+    reject_median_fps: 20.0
+  audio:
+    accept_snr_db: 15.0
+    reject_snr_db: 10.0
+    accept_clipping_fraction: 0.005
+    reject_clipping_fraction: 0.02
+  synchronization:
+    accept_start_offset_ms: 50
+    reject_start_offset_ms: 100
+coupling:
+  status: exploratory
+  coincidence_window_ms: 500
+  permutation_count: 1000

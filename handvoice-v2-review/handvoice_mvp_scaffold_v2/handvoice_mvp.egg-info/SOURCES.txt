@@ -1,0 +1,7 @@
+README.md
+pyproject.toml
+handvoice_mvp.egg-info/PKG-INFO
+handvoice_mvp.egg-info/SOURCES.txt
+handvoice_mvp.egg-info/dependency_links.txt
+handvoice_mvp.egg-info/requires.txt
+handvoice_mvp.egg-info/top_level.txt

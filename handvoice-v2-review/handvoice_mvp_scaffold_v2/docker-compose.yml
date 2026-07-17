@@ -1,0 +1,37 @@
+# Local competition-development stack only. Database is not published to the host.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-handvoice}
+      POSTGRES_USER: ${POSTGRES_USER:-handvoice}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-this-local-password}
+    volumes:
+      - handvoice_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-handvoice}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    environment:
+      HANDVOICE_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-handvoice}:${POSTGRES_PASSWORD:-change-this-local-password}@postgres:5432/${POSTGRES_DB:-handvoice}
+      HANDVOICE_PROTOCOL_PATH: configs/protocol.v1.yaml
+      HANDVOICE_STORAGE_ROOT: /data/media
+      HANDVOICE_API_KEY: ${HANDVOICE_API_KEY:-change-this-api-key}
+      HANDVOICE_AUTO_CREATE_SCHEMA: "true"
+      HANDVOICE_MAXIMUM_MEDIA_BYTES: "67108864"
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./local_media:/data/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  handvoice_pg:
