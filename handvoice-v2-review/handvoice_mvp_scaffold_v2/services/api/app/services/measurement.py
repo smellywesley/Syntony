@@ -9,6 +9,7 @@ from pipelines.audio.media import extract_audio_events_from_media
 from pipelines.common.contracts import Modality
 from pipelines.dual_task.cost import Orientation, calculate_dual_task_cost, robust_condition_estimate
 from pipelines.measurement.core import analyze_measurement
+from pipelines.quality.confounds import compute_capture_confounds
 from pipelines.video.contracts import FrameValidity, LandmarkFrame
 from pipelines.video.extractor import derive_hand_signal
 from services.api.app.models.entities import (
@@ -162,6 +163,31 @@ def submit_measurement(
                 _feature(task.id, Modality.MOTOR.value, "tap_interval_cv", result.motor_rhythm.interval_cv, "proportion"),
                 _feature(task.id, Modality.MOTOR.value, "median_tap_amplitude", result.median_motor_amplitude, "normalized"),
                 _feature(task.id, Modality.MOTOR.value, "tap_event_count", float(result.motor_rhythm.event_count), "count"),
+            ]
+        )
+    if result.sequence_effect:
+        sequence = result.sequence_effect
+        db.add_all(
+            [
+                _feature(task.id, Modality.MOTOR.value, "amplitude_decrement_slope", sequence.amplitude_decrement_slope, "per_tap"),
+                _feature(task.id, Modality.MOTOR.value, "amplitude_decrement_ratio", sequence.amplitude_decrement_ratio, "proportion"),
+                _feature(task.id, Modality.MOTOR.value, "speed_decrement_slope", sequence.speed_decrement_slope_ms, "ms_per_interval"),
+                _feature(
+                    task.id,
+                    Modality.MOTOR.value,
+                    "halt_count",
+                    None if sequence.halt_count is None else float(sequence.halt_count),
+                    "count",
+                ),
+            ]
+        )
+    if frames:
+        confounds = compute_capture_confounds(hand_samples)
+        db.add_all(
+            [
+                _feature(task.id, Modality.QUALITY.value, "achieved_frame_rate_hz", confounds.achieved_frame_rate_hz, "Hz", status="confound"),
+                _feature(task.id, Modality.QUALITY.value, "valid_frame_fraction", confounds.valid_frame_fraction, "proportion", status="confound"),
+                _feature(task.id, Modality.QUALITY.value, "median_palm_scale", confounds.median_palm_scale, "normalized", status="confound"),
             ]
         )
     if result.speech_rhythm:

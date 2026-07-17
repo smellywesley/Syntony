@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+from uuid import UUID
 
 os.environ["HANDVOICE_DATABASE_URL"] = "sqlite:///./test_handvoice.db"
 os.environ["HANDVOICE_AUTO_CREATE_SCHEMA"] = "true"
@@ -13,9 +14,13 @@ os.environ["HANDVOICE_API_KEY"] = "test-api-key"
 
 from fastapi.testclient import TestClient
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from services.api.app.db.base import Base
 from services.api.app.db.session import engine
 from services.api.app.main import app
+from services.api.app.models.entities import Feature, TaskInstance
 
 HEADERS = {"X-HandVoice-API-Key": "test-api-key"}
 STORAGE = Path(".test_storage")
@@ -186,6 +191,19 @@ def test_three_task_synchronous_measurement_path():
         assert report_body["metrics"]["speech_rate_dtc_percent"] > 0
         assert report_body["exploratory_coupling"]["event_coincidence_rate"] is not None
         assert "no diagnosis" in report_body["note"].lower()
+
+        # Sequence-effect and confound features are computed and persisted for T01.
+        with Session(engine) as db:
+            t01_features = set(
+                db.scalars(
+                    select(Feature.feature_name)
+                    .join(TaskInstance, Feature.task_instance_id == TaskInstance.id)
+                    .where(TaskInstance.id == UUID(tasks["T01"]["id"]))
+                ).all()
+            )
+        assert "amplitude_decrement_slope" in t01_features
+        assert "halt_count" in t01_features
+        assert "achieved_frame_rate_hz" in t01_features
 
         visualization = client.get(
             f"/v1/sessions/{body['id']}/visualization", headers=HEADERS

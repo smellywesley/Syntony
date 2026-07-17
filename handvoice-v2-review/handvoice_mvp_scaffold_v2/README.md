@@ -90,10 +90,10 @@ Open `http://127.0.0.1:8000/capture/` for the capture interface or `http://127.0
 ## Verified status
 
 ```text
-38 passed
+57 passed
 ```
 
-The test suite includes adversarial regression tests for the greedy coupling failure, overlapping VAD intervals, duplicate protocol codes, malformed hand landmarks, A/V start skew, active-window drift, storage-path escape, bounded upload, authorization, synchronous measurement, DTC, visualization, conditional repeat creation, placeholder-API-key startup refusal, duplicate-recording rejection, and the synthetic validation harness.
+The test suite includes adversarial regression tests for the greedy coupling failure, overlapping VAD intervals, duplicate protocol codes, malformed hand landmarks, A/V start skew, active-window drift, storage-path escape, bounded upload, authorization, synchronous measurement, DTC, visualization, conditional repeat creation, placeholder-API-key startup refusal, duplicate-recording rejection, test-retest reliability (ICC/SEM/MDC), tapping sequence-effect features, DDK onset agreement, capture confounds, and the synthetic validation harness.
 
 ## Engineering validation
 

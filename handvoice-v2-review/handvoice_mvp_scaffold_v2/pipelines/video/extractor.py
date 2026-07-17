@@ -15,6 +15,7 @@ class HandSignalSample:
     normalized_thumb_index_distance: float | None
     valid: bool
     quality_reason: str | None = None
+    palm_scale: float | None = None  # hand-distance proxy for confound logging
 
 
 def _distance(a: Sequence[float], b: Sequence[float]) -> float:
@@ -71,6 +72,7 @@ def derive_hand_signal(frames: list[LandmarkFrame]) -> list[HandSignalSample]:
                     thumb_index_angle_rad=angle,
                     normalized_thumb_index_distance=normalized_distance,
                     valid=True,
+                    palm_scale=palm_scale,
                 )
             )
         except (IndexError, TypeError, ValueError, ZeroDivisionError):

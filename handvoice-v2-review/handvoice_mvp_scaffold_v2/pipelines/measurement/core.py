@@ -19,6 +19,75 @@ class RhythmFeatures:
 
 
 @dataclass(frozen=True, slots=True)
+class SequenceEffect:
+    """Progressive decrement across the tapping trial (MDS-UPDRS 3.4 hallmark).
+
+    The cardinal parkinsonian sign is amplitude/velocity decrement over the
+    sequence, distinct from mean rate. Slopes are per-tap; ratio is final-third
+    over first-third mean amplitude (<1 means the movement shrank).
+    """
+
+    amplitude_decrement_slope: float | None
+    amplitude_decrement_ratio: float | None
+    speed_decrement_slope_ms: float | None
+    halt_count: int | None
+
+
+def _ols_slope(values: list[float]) -> float | None:
+    """Least-squares slope of values against their integer index (0..n-1)."""
+    n = len(values)
+    if n < 2:
+        return None
+    mean_x = (n - 1) / 2.0
+    mean_y = sum(values) / n
+    var_x = sum((i - mean_x) ** 2 for i in range(n))
+    if var_x == 0:
+        return None
+    covariance = sum((i - mean_x) * (value - mean_y) for i, value in enumerate(values))
+    return covariance / var_x
+
+
+def compute_sequence_effect(
+    tap_times_ms: list[int],
+    tap_amplitudes: list[float],
+    *,
+    halt_interval_multiple: float = 2.0,
+) -> SequenceEffect:
+    """Derive decrement features from ordered per-tap amplitudes and times.
+
+    ``halt_count`` is the number of inter-tap intervals exceeding
+    ``halt_interval_multiple`` times the median interval (hesitations/halts).
+    Fields are None when too few taps exist to estimate them.
+    """
+    ordered = [amplitude for _, amplitude in sorted(zip(tap_times_ms, tap_amplitudes))]
+    slope = _ols_slope(ordered)
+
+    ratio: float | None = None
+    if len(ordered) >= 3:
+        third = len(ordered) // 3
+        first_third = ordered[:third]
+        final_third = ordered[-third:]
+        first_mean = sum(first_third) / len(first_third)
+        if first_mean > 0:
+            ratio = (sum(final_third) / len(final_third)) / first_mean
+
+    times = sorted(tap_times_ms)
+    intervals = [later - earlier for earlier, later in zip(times, times[1:]) if later > earlier]
+    speed_slope = _ols_slope([float(interval) for interval in intervals])
+    halt_count: int | None = None
+    if intervals:
+        median_interval = median(intervals)
+        halt_count = sum(1 for interval in intervals if interval > halt_interval_multiple * median_interval)
+
+    return SequenceEffect(
+        amplitude_decrement_slope=slope,
+        amplitude_decrement_ratio=ratio,
+        speed_decrement_slope_ms=speed_slope,
+        halt_count=halt_count,
+    )
+
+
+@dataclass(frozen=True, slots=True)
 class MeasurementResult:
     motor_events: tuple[TimestampedEvent, ...]
     speech_events: tuple[TimestampedEvent, ...]
@@ -26,6 +95,7 @@ class MeasurementResult:
     speech_rhythm: RhythmFeatures | None
     speech_timing: SpeechTimingFeatures | None
     median_motor_amplitude: float | None
+    sequence_effect: SequenceEffect | None
     coupling: CouplingResult | None
 
 
@@ -137,6 +207,7 @@ def analyze_measurement(
         if motor_events and speech_events
         else None
     )
+    sequence_effect = compute_sequence_effect(tap_times, tap_amplitudes) if tap_times else None
     return MeasurementResult(
         motor_events=motor_events,
         speech_events=speech_events,
@@ -144,5 +215,6 @@ def analyze_measurement(
         speech_rhythm=speech_rhythm,
         speech_timing=speech_timing,
         median_motor_amplitude=median(tap_amplitudes) if tap_amplitudes else None,
+        sequence_effect=sequence_effect,
         coupling=coupling,
     )
