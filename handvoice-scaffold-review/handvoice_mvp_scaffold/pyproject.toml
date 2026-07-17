@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "handvoice-mvp"
+version = "0.1.0"
+description = "Synchronized hand-speech dual-task measurement scaffold"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.128,<1",
+  "uvicorn[standard]>=0.34,<1",
+  "pydantic>=2.13,<3",
+  "pydantic-settings>=2.7,<3",
+  "sqlalchemy>=2.0.50,<3",
+  "psycopg[binary]>=3.2,<4",
+  "python-multipart>=0.0.20,<1",
+  "PyYAML>=6.0,<7",
+  "numpy>=2.0,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=9,<10",
+  "httpx>=0.28,<1",
+  "ruff>=0.12,<1",
+]
+
+[tool.setuptools]
+py-modules = []
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

@@ -1,0 +1,107 @@
+schema_version: 1.0.0
+protocol_version: 1.0.0
+positioning: functional_measurement_not_diagnosis
+timing:
+  pre_roll_ms: 2000
+  active_ms: 10000
+  post_roll_ms: 3000
+repetitions: 2
+equal_priority_instruction_required: true
+task_definitions:
+- code: T01
+  name: right_tapping
+  condition: single
+  hand: right
+  speech_task: null
+- code: T02
+  name: left_tapping
+  condition: single
+  hand: left
+  speech_task: null
+- code: T03
+  name: counting
+  condition: single
+  hand: null
+  speech_task: count_backwards
+- code: T04
+  name: ddk
+  condition: single
+  hand: null
+  speech_task: ddk_pataka
+- code: T05
+  name: right_tapping_counting
+  condition: dual
+  hand: right
+  speech_task: count_backwards
+- code: T06
+  name: left_tapping_counting
+  condition: dual
+  hand: left
+  speech_task: count_backwards
+- code: T07
+  name: right_tapping_ddk
+  condition: dual
+  hand: right
+  speech_task: ddk_pataka
+- code: T08
+  name: left_tapping_ddk
+  condition: dual
+  hand: left
+  speech_task: ddk_pataka
+sequences:
+  A:
+  - T01
+  - T02
+  - T03
+  - T04
+  - T05
+  - T06
+  - T07
+  - T08
+  B:
+  - T03
+  - T04
+  - T02
+  - T01
+  - T08
+  - T07
+  - T06
+  - T05
+  C:
+  - T02
+  - T01
+  - T04
+  - T03
+  - T07
+  - T08
+  - T05
+  - T06
+  D:
+  - T04
+  - T03
+  - T01
+  - T02
+  - T06
+  - T05
+  - T08
+  - T07
+quality_defaults:
+  video:
+    accept_valid_frame_fraction: 0.85
+    reject_valid_frame_fraction: 0.7
+    accept_median_fps: 24.0
+    reject_median_fps: 20.0
+  audio:
+    accept_snr_db: 15.0
+    reject_snr_db: 10.0
+    accept_clipping_fraction: 0.005
+    reject_clipping_fraction: 0.02
+  synchronization:
+    accept_start_offset_ms: 50
+    reject_start_offset_ms: 100
+coupling:
+  coincidence_window_ms: 500
+  sliding_window_ms: 2000
+  sliding_step_ms: 250
+  max_lag_ms: 2000
+  permutation_count: 1000

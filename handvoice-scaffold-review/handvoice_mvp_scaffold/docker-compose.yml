@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: handvoice
+      POSTGRES_USER: handvoice
+      POSTGRES_PASSWORD: handvoice
+    ports:
+      - "5432:5432"
+    volumes:
+      - handvoice_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U handvoice"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    environment:
+      HANDVOICE_DATABASE_URL: postgresql+psycopg://handvoice:handvoice@postgres:5432/handvoice
+      HANDVOICE_REDIS_URL: redis://redis:6379/0
+      HANDVOICE_PROTOCOL_PATH: configs/protocol.v1.yaml
+      HANDVOICE_AUTO_CREATE_SCHEMA: "true"
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    command: ["python", "-m", "services.worker.app.worker"]
+    environment:
+      HANDVOICE_DATABASE_URL: postgresql+psycopg://handvoice:handvoice@postgres:5432/handvoice
+      HANDVOICE_REDIS_URL: redis://redis:6379/0
+      HANDVOICE_PROTOCOL_PATH: configs/protocol.v1.yaml
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+volumes:
+  handvoice_pg:
