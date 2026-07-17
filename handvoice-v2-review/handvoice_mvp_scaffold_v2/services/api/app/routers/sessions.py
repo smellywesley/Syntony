@@ -69,6 +69,9 @@ def measure_task(
     except (ValueError, RuntimeError) as exc:
         db.rollback()
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="task already has a recording from a concurrent submission") from exc
     return {"recording_id": str(recording.id), "status": "analyzed_synchronously"}
 
 

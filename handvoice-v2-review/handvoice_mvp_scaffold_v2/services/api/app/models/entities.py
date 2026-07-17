@@ -85,8 +85,11 @@ class TaskInstance(Base):
 
 class Recording(Base):
     __tablename__ = "recordings"
+    # One accepted recording per task instance; repeats get their own task instance.
+    # The constraint closes the check-then-insert race in submit_measurement.
+    __table_args__ = (UniqueConstraint("task_instance_id", name="uq_recording_task_instance"),)
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
-    task_instance_id: Mapped[UUID] = mapped_column(ForeignKey("task_instances.id", ondelete="CASCADE"), index=True)
+    task_instance_id: Mapped[UUID] = mapped_column(ForeignKey("task_instances.id", ondelete="CASCADE"))
     object_uri: Mapped[str] = mapped_column(Text)
     sha256: Mapped[str] = mapped_column(String(64), index=True)
     duration_ms: Mapped[int] = mapped_column(Integer)

@@ -55,6 +55,7 @@ def setup_module():
 
 def teardown_module():
     Base.metadata.drop_all(bind=engine)
+    engine.dispose()  # release the SQLite file handle so Windows allows the unlink
     Path("test_handvoice.db").unlink(missing_ok=True)
     shutil.rmtree(STORAGE, ignore_errors=True)
 

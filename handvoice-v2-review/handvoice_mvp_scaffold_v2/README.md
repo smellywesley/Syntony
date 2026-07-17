@@ -69,6 +69,8 @@ X-HandVoice-API-Key: <configured key>
 
 ## Quick start
 
+**Prerequisites:** Python 3.11+ and FFmpeg. `ffprobe`/`ffmpeg` must be on `PATH` — media validation, audio extraction, and 4 integration tests hard-require them (`winget install Gyan.FFmpeg` on Windows, `apt install ffmpeg` on Debian/Ubuntu).
+
 ```powershell
 cd handvoice_mvp_scaffold_v2
 py -3.11 -m venv .venv
@@ -76,20 +78,22 @@ Set-ExecutionPolicy -Scope Process Bypass
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -e ".[dev]"
-$env:HANDVOICE_API_KEY = "local-development-only-change-me"
+$env:HANDVOICE_API_KEY = python -c "import secrets; print(secrets.token_urlsafe(32))"
 pytest
 uvicorn services.api.app.main:app --reload
 ```
+
+The server refuses to start if `HANDVOICE_API_KEY` is unset or left at a known placeholder value — it must be a unique secret.
 
 Open `http://127.0.0.1:8000/capture/` for the capture interface or `http://127.0.0.1:8000/docs` for the API.
 
 ## Verified status
 
 ```text
-33 passed
+38 passed
 ```
 
-The test suite includes adversarial regression tests for the greedy coupling failure, overlapping VAD intervals, duplicate protocol codes, malformed hand landmarks, A/V start skew, active-window drift, storage-path escape, bounded upload, authorization, synchronous measurement, DTC, visualization, conditional repeat creation, and the synthetic validation harness.
+The test suite includes adversarial regression tests for the greedy coupling failure, overlapping VAD intervals, duplicate protocol codes, malformed hand landmarks, A/V start skew, active-window drift, storage-path escape, bounded upload, authorization, synchronous measurement, DTC, visualization, conditional repeat creation, placeholder-API-key startup refusal, duplicate-recording rejection, and the synthetic validation harness.
 
 ## Engineering validation
 
@@ -105,6 +109,8 @@ The Docker configuration is **local competition development only**. PostgreSQL i
 
 ```powershell
 Copy-Item .env.example .env
+# Edit .env: HANDVOICE_API_KEY must be replaced with a unique secret,
+# or the API container will refuse to start.
 docker compose up --build
 ```
 
