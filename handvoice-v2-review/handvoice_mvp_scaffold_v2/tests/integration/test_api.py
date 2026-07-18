@@ -241,6 +241,10 @@ def test_three_task_synchronous_measurement_path():
         assert "mean_f0_hz" in t02_features
         assert "jitter_local_percent" in t02_features
         assert "mean_hnr_db" in t02_features
+        # DDK temporal fine-structure features are persisted for the speech task.
+        assert "ddk_ioi_mean_ms" in t02_features
+        assert "ddk_rate_variance_hz2" in t02_features
+        assert "ddk_rate_decrement_slope" in t02_features
 
         visualization = client.get(
             f"/v1/sessions/{body['id']}/visualization", headers=HEADERS

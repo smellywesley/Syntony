@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from math import isfinite
-from statistics import mean, median, pstdev
+from statistics import mean, median, pstdev, stdev, variance
 
 from pipelines.audio.extractor import SpeechTimingFeatures, calculate_speech_timing_features
 from pipelines.common.contracts import Modality, TimestampedEvent
@@ -88,6 +88,59 @@ def compute_sequence_effect(
 
 
 @dataclass(frozen=True, slots=True)
+class DdkDynamics:
+    """Temporal fine structure of the DDK (/pa-ta-ka/) sequence.
+
+    Inter-syllable dwell time and rate variance are cited as the most sensitive
+    speech-timing markers separating neuromotor impairment from controls, and the
+    rate-decrement slope is the speech analogue of the motor sequence effect
+    (negative = the cadence slowed over the trial). Fields are None when too few
+    onsets/intervals exist to estimate them.
+    """
+
+    inter_onset_interval_mean_ms: float | None
+    inter_onset_interval_sd_ms: float | None
+    instantaneous_rate_variance_hz2: float | None
+    dwell_time_mean_ms: float | None
+    dwell_time_sd_ms: float | None
+    rate_decrement_slope_hz_per_syllable: float | None
+
+
+def compute_ddk_dynamics(
+    ddk_event_ms: list[int],
+    voiced_intervals: list[tuple[int, int]],
+    *,
+    active_duration_ms: int,
+) -> DdkDynamics:
+    onsets = sorted({time for time in ddk_event_ms if 0 <= time <= active_duration_ms})
+    intervals = [later - earlier for earlier, later in zip(onsets, onsets[1:]) if later > earlier]
+    ioi_mean = float(mean(intervals)) if intervals else None
+    ioi_sd = float(stdev(intervals)) if len(intervals) >= 2 else None
+
+    rates = [1000.0 / interval for interval in intervals if interval > 0]
+    rate_variance = float(variance(rates)) if len(rates) >= 2 else None
+    rate_slope = _ols_slope(rates) if len(rates) >= 2 else None
+
+    ordered_intervals = sorted(voiced_intervals)
+    dwells = [
+        later_start - earlier_end
+        for (_, earlier_end), (later_start, _) in zip(ordered_intervals, ordered_intervals[1:])
+        if later_start > earlier_end
+    ]
+    dwell_mean = float(mean(dwells)) if dwells else None
+    dwell_sd = float(stdev(dwells)) if len(dwells) >= 2 else None
+
+    return DdkDynamics(
+        inter_onset_interval_mean_ms=ioi_mean,
+        inter_onset_interval_sd_ms=ioi_sd,
+        instantaneous_rate_variance_hz2=rate_variance,
+        dwell_time_mean_ms=dwell_mean,
+        dwell_time_sd_ms=dwell_sd,
+        rate_decrement_slope_hz_per_syllable=rate_slope,
+    )
+
+
+@dataclass(frozen=True, slots=True)
 class MeasurementResult:
     motor_events: tuple[TimestampedEvent, ...]
     speech_events: tuple[TimestampedEvent, ...]
@@ -96,6 +149,7 @@ class MeasurementResult:
     speech_timing: SpeechTimingFeatures | None
     median_motor_amplitude: float | None
     sequence_effect: SequenceEffect | None
+    ddk_dynamics: DdkDynamics | None
     coupling: CouplingResult | None
 
 
@@ -208,6 +262,11 @@ def analyze_measurement(
         else None
     )
     sequence_effect = compute_sequence_effect(tap_times, tap_amplitudes) if tap_times else None
+    ddk_dynamics = (
+        compute_ddk_dynamics(ddk_event_ms, voiced_intervals, active_duration_ms=active_duration_ms)
+        if ddk_event_ms
+        else None
+    )
     return MeasurementResult(
         motor_events=motor_events,
         speech_events=speech_events,
@@ -216,5 +275,6 @@ def analyze_measurement(
         speech_timing=speech_timing,
         median_motor_amplitude=median(tap_amplitudes) if tap_amplitudes else None,
         sequence_effect=sequence_effect,
+        ddk_dynamics=ddk_dynamics,
         coupling=coupling,
     )

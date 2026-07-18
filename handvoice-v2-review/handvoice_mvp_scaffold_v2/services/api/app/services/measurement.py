@@ -212,6 +212,18 @@ def submit_measurement(
                 _feature(task.id, Modality.SPEECH.value, "ddk_event_count", float(result.speech_rhythm.event_count), "count"),
             ]
         )
+    if result.ddk_dynamics:
+        dynamics = result.ddk_dynamics
+        db.add_all(
+            [
+                _feature(task.id, Modality.SPEECH.value, "ddk_ioi_mean_ms", dynamics.inter_onset_interval_mean_ms, "ms"),
+                _feature(task.id, Modality.SPEECH.value, "ddk_ioi_sd_ms", dynamics.inter_onset_interval_sd_ms, "ms"),
+                _feature(task.id, Modality.SPEECH.value, "ddk_rate_variance_hz2", dynamics.instantaneous_rate_variance_hz2, "Hz2"),
+                _feature(task.id, Modality.SPEECH.value, "ddk_dwell_time_mean_ms", dynamics.dwell_time_mean_ms, "ms"),
+                _feature(task.id, Modality.SPEECH.value, "ddk_dwell_time_sd_ms", dynamics.dwell_time_sd_ms, "ms"),
+                _feature(task.id, Modality.SPEECH.value, "ddk_rate_decrement_slope", dynamics.rate_decrement_slope_hz_per_syllable, "hz_per_syllable"),
+            ]
+        )
     if result.speech_timing:
         db.add_all(
             [

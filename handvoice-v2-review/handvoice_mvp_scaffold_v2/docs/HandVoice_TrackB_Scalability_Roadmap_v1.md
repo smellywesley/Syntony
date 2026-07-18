@@ -47,11 +47,22 @@ human-labeled audio remains a Track A dependency.
 
 ## 3. Prioritized next steps
 
-### 3.1 Acoustic features — remaining work
-- Validate the baseline against Praat/parselmouth on labeled audio.
-- Add DDK temporal fine structure: **inter-syllable dwelling time** and
-  **variance in rate** — the most sensitive markers separating healthy
-  controls from neuromotor impairment.
+### DDK temporal fine structure (shipped in this iteration)
+`compute_ddk_dynamics` in `pipelines/measurement/core.py` adds, for T02/T03,
+persisted under the speech modality:
+- Inter-onset interval mean/SD (`ddk_ioi_mean_ms`, `ddk_ioi_sd_ms`)
+- Instantaneous-rate variance (`ddk_rate_variance_hz2`) — the "variance in rate" marker
+- Inter-syllable dwell time mean/SD from voiced-interval gaps (`ddk_dwell_time_*`)
+- Rate-decrement slope (`ddk_rate_decrement_slope`) — the speech analogue of the
+  motor sequence effect (negative = cadence slowed over the trial)
+
+Dwell time depends on the resolution of the voiced-interval segmentation, which
+is still the energy baseline; it sharpens once the DDK segmenter is validated.
+
+### 3.1 Acoustic / DDK features — remaining work
+- Validate the acoustic baseline against Praat/parselmouth on labeled audio.
+- Validate DDK onset/dwell segmentation against human annotation (see the DDK
+  annotation protocol doc) so dwell-time resolution is defensible.
 - Consider a sustained-vowel task for defensible jitter/shimmer (protocol change).
 
 ### 3.2 Sequence-effect emphasis (align to neurophysiology)
