@@ -5,7 +5,8 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from pipelines.audio.media import extract_audio_events_from_media
+from pipelines.audio.acoustic import extract_acoustic_features
+from pipelines.audio.media import decode_audio_segment, extract_energy_events
 from pipelines.common.contracts import Modality
 from pipelines.dual_task.cost import Orientation, calculate_dual_task_cost, robust_condition_estimate
 from pipelines.measurement.core import analyze_measurement
@@ -26,6 +27,7 @@ from services.api.app.services.media import validate_uploaded_media
 from services.api.app.services.protocol import load_protocol
 
 ALGORITHM_VERSION = "mvp-sync-0.2.0"
+AUDIO_SAMPLE_RATE = 16000
 
 
 def _feature(
@@ -103,16 +105,28 @@ def submit_measurement(
     protocol = load_protocol()
     voiced_intervals = [(interval.start_ms, interval.end_ms) for interval in payload.voiced_intervals]
     ddk_event_ms = list(payload.ddk_event_ms)
-    if task.task_code in {"T02", "T03"} and (not voiced_intervals or not ddk_event_ms):
-        audio_events = extract_audio_events_from_media(
-            media.path,
-            active_start_ms=payload.manifest.active_start_ms,
-            active_duration_ms=protocol["timing"]["active_ms"],
-        )
-        if not voiced_intervals:
-            voiced_intervals = list(audio_events.voiced_intervals)
-        if not ddk_event_ms:
-            ddk_event_ms = list(audio_events.onset_times_ms)
+    acoustic = None
+    if task.task_code in {"T02", "T03"}:
+        # Decode the active window once and reuse it for the energy-event
+        # baseline (only when the client did not supply annotations) and for the
+        # acoustic voice features, which always come from the raw waveform.
+        try:
+            samples = decode_audio_segment(
+                media.path,
+                start_ms=payload.manifest.active_start_ms,
+                duration_ms=protocol["timing"]["active_ms"],
+                sample_rate=AUDIO_SAMPLE_RATE,
+            )
+        except (ValueError, RuntimeError):
+            samples = None
+        if samples is not None:
+            if not voiced_intervals or not ddk_event_ms:
+                audio_events = extract_energy_events(samples, sample_rate=AUDIO_SAMPLE_RATE)
+                if not voiced_intervals:
+                    voiced_intervals = list(audio_events.voiced_intervals)
+                if not ddk_event_ms:
+                    ddk_event_ms = list(audio_events.onset_times_ms)
+            acoustic = extract_acoustic_features(samples, sample_rate=AUDIO_SAMPLE_RATE)
 
     result = analyze_measurement(
         active_duration_ms=protocol["timing"]["active_ms"],
@@ -203,6 +217,21 @@ def submit_measurement(
             [
                 _feature(task.id, Modality.SPEECH.value, "voiced_duration_ms", float(result.speech_timing.voiced_duration_ms), "ms"),
                 _feature(task.id, Modality.SPEECH.value, "pause_percentage", result.speech_timing.pause_percentage, "percent"),
+            ]
+        )
+    if acoustic and acoustic.voiced_frame_count > 0:
+        # Unvalidated acoustic baseline (autocorrelation pitch tracking); flagged
+        # in metadata so it is never mistaken for a validated clinical measure.
+        acoustic_meta = {"method": "autocorrelation_baseline", "validated": False}
+        db.add_all(
+            [
+                _feature(task.id, Modality.SPEECH.value, "mean_f0_hz", acoustic.mean_f0_hz, "Hz", metadata=acoustic_meta),
+                _feature(task.id, Modality.SPEECH.value, "f0_std_hz", acoustic.f0_std_hz, "Hz", metadata=acoustic_meta),
+                _feature(task.id, Modality.SPEECH.value, "f0_range_hz", acoustic.f0_range_hz, "Hz", metadata=acoustic_meta),
+                _feature(task.id, Modality.SPEECH.value, "jitter_local_percent", acoustic.jitter_local_percent, "percent", metadata=acoustic_meta),
+                _feature(task.id, Modality.SPEECH.value, "shimmer_local_percent", acoustic.shimmer_local_percent, "percent", metadata=acoustic_meta),
+                _feature(task.id, Modality.SPEECH.value, "mean_hnr_db", acoustic.mean_hnr_db, "dB", metadata=acoustic_meta),
+                _feature(task.id, Modality.QUALITY.value, "voiced_fraction", acoustic.voiced_fraction, "proportion", status="confound"),
             ]
         )
     if result.coupling:

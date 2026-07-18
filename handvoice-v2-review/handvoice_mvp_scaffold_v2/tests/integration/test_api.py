@@ -228,6 +228,20 @@ def test_three_task_synchronous_measurement_path():
         assert "halt_count" in t01_features
         assert "achieved_frame_rate_hz" in t01_features
 
+        # Acoustic voice features are decoded from the waveform and persisted for
+        # the speech-only task even though it supplied its own DDK annotations.
+        with Session(engine) as db:
+            t02_features = set(
+                db.scalars(
+                    select(Feature.feature_name)
+                    .join(TaskInstance, Feature.task_instance_id == TaskInstance.id)
+                    .where(TaskInstance.id == UUID(tasks["T02"]["id"]))
+                ).all()
+            )
+        assert "mean_f0_hz" in t02_features
+        assert "jitter_local_percent" in t02_features
+        assert "mean_hnr_db" in t02_features
+
         visualization = client.get(
             f"/v1/sessions/{body['id']}/visualization", headers=HEADERS
         )

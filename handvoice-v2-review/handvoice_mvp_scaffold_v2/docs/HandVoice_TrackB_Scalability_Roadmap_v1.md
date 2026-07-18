@@ -31,16 +31,28 @@ capability add.
 - Capture app stores the operator key once per device (localStorage);
   **participants never enter a credential**.
 
+### Acoustic voice features (shipped in this iteration)
+`pipelines/audio/acoustic.py` adds a dependency-light (numpy-only) acoustic
+baseline computed from the decoded active-window waveform for T02/T03 and
+persisted under the speech modality:
+- Mean F0 and F0 variability (`f0_std_hz`, `f0_range_hz`) — pitch monotonicity
+- Local jitter and local shimmer (frame-to-frame period/amplitude perturbation)
+- Harmonics-to-noise ratio (Boersma-style, window-normalized autocorrelation)
+- `voiced_fraction` logged as a capture confound
+
+It is flagged `validated: false` in feature metadata: F0 is tracked by short-time
+autocorrelation (not glottal-cycle analysis), and jitter/shimmer are classically
+measured on sustained phonation rather than DDK. Validation against Praat and
+human-labeled audio remains a Track A dependency.
+
 ## 3. Prioritized next steps
 
-### 3.1 Acoustic voice features (highest value, no ethics gate)
-Add a real acoustic feature module alongside the energy VAD:
-- Pitch / F0 and pitch variability (monotonicity is a classic PD sign)
-- Jitter and shimmer (cycle-to-cycle frequency/amplitude perturbation)
-- Harmonics-to-noise ratio (breathiness / dysphonia)
-- DDK temporal fine structure: **inter-syllable dwelling time** and
+### 3.1 Acoustic features — remaining work
+- Validate the baseline against Praat/parselmouth on labeled audio.
+- Add DDK temporal fine structure: **inter-syllable dwelling time** and
   **variance in rate** — the most sensitive markers separating healthy
   controls from neuromotor impairment.
+- Consider a sustained-vowel task for defensible jitter/shimmer (protocol change).
 
 ### 3.2 Sequence-effect emphasis (align to neurophysiology)
 Established work (Journal of Neurophysiology) attributes repetitive-tapping

@@ -34,6 +34,7 @@ Temporal coupling remains **exploratory**.
 - Hand-signal derivation from 21-landmark frames
 - Tap-event and rhythm extraction
 - Raw-audio energy/VAD baseline or supplied annotated DDK events
+- Acoustic voice features (F0 mean/variability, local jitter, local shimmer, HNR) via autocorrelation pitch tracking
 - Overlap-safe speech timing features
 - Direction-aware bidirectional dual-task cost
 - Maximum-cardinality, minimum-total-lag event matching
@@ -99,10 +100,10 @@ Open `http://127.0.0.1:8000/capture/` for the capture interface or `http://127.0
 ## Verified status
 
 ```text
-64 passed
+69 passed
 ```
 
-The test suite includes adversarial regression tests for the greedy coupling failure, overlapping VAD intervals, duplicate protocol codes, malformed hand landmarks, A/V start skew, active-window drift, storage-path escape, bounded upload, operator-key authorization (unknown key rejected, legacy header still works), placeholder-bootstrap-key seeding refusal, synchronous measurement, DTC, visualization, conditional repeat creation, duplicate-recording rejection, test-retest reliability (ICC/SEM/MDC), tapping sequence-effect features, DDK onset agreement, capture confounds, and the synthetic validation harness.
+The test suite includes adversarial regression tests for the greedy coupling failure, overlapping VAD intervals, duplicate protocol codes, malformed hand landmarks, A/V start skew, active-window drift, storage-path escape, bounded upload, operator-key authorization (unknown key rejected, legacy header still works), placeholder-bootstrap-key seeding refusal, synchronous measurement, DTC, visualization, conditional repeat creation, duplicate-recording rejection, test-retest reliability (ICC/SEM/MDC), tapping sequence-effect features, DDK onset agreement, capture confounds, acoustic voice features (F0/jitter/shimmer/HNR against synthetic tones), and the synthetic validation harness.
 
 ## Engineering validation
 
