@@ -25,7 +25,13 @@ const element = <T extends HTMLElement>(id: string): T => {
   return found as T;
 };
 
-const apiKeyInput = element<HTMLInputElement>("api-key");
+const OPERATOR_KEY_STORAGE = "handvoice.operatorKey";
+
+const operatorSetup = element<HTMLElement>("operator-setup");
+const operatorKeyInput = element<HTMLInputElement>("operator-key");
+const saveOperatorButton = element<HTMLButtonElement>("save-operator");
+const changeOperatorButton = element<HTMLButtonElement>("change-operator");
+const operatorStatus = element<HTMLElement>("operator-status");
 const studyIdInput = element<HTMLInputElement>("study-id");
 const participantRefInput = element<HTMLInputElement>("participant-ref");
 const startButton = element<HTMLButtonElement>("start-session");
@@ -46,10 +52,40 @@ let handLandmarker: HandLandmarker;
 let session: Session;
 let taskIndex = 0;
 
+function operatorKey(): string {
+  return localStorage.getItem(OPERATOR_KEY_STORAGE) ?? "";
+}
+
 function apiHeaders(json = false): HeadersInit {
-  const headers: Record<string, string> = { "X-HandVoice-API-Key": apiKeyInput.value };
+  const headers: Record<string, string> = { Authorization: `Bearer ${operatorKey()}` };
   if (json) headers["Content-Type"] = "application/json";
   return headers;
+}
+
+function reflectOperatorState(): void {
+  const hasKey = operatorKey().length > 0;
+  operatorSetup.hidden = hasKey;
+  changeOperatorButton.hidden = !hasKey;
+  startButton.disabled = !hasKey;
+  operatorStatus.textContent = hasKey
+    ? "Operator key ready on this device. Participants do not enter a key."
+    : "Enter the operator key once to enable this device.";
+}
+
+function saveOperator(): void {
+  const value = operatorKeyInput.value.trim();
+  if (!value) {
+    operatorStatus.textContent = "Enter the operator key provided for this study.";
+    return;
+  }
+  localStorage.setItem(OPERATOR_KEY_STORAGE, value);
+  operatorKeyInput.value = "";
+  reflectOperatorState();
+}
+
+function changeOperator(): void {
+  localStorage.removeItem(OPERATOR_KEY_STORAGE);
+  reflectOperatorState();
 }
 
 async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -113,7 +149,7 @@ async function initializeCamera(): Promise<void> {
 }
 
 async function startSession(): Promise<void> {
-  if (!apiKeyInput.value.trim()) throw new Error("Enter the local API key.");
+  if (!operatorKey()) throw new Error("Save the operator key for this device first.");
   if (!studyIdInput.value.trim()) throw new Error("Enter a study ID.");
   startButton.disabled = true;
   try {
@@ -298,6 +334,10 @@ async function recordCurrentTask(): Promise<void> {
     recordButton.disabled = taskIndex >= session.tasks.length;
   }
 }
+
+saveOperatorButton.addEventListener("click", saveOperator);
+changeOperatorButton.addEventListener("click", changeOperator);
+reflectOperatorState();
 
 startButton.addEventListener("click", () => {
   startSession().catch((error: unknown) => {

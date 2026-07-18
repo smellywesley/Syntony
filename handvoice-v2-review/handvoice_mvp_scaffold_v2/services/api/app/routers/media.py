@@ -7,13 +7,13 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from services.api.app.core.config import get_settings
-from services.api.app.core.security import require_api_key
+from services.api.app.core.security import require_operator
 from services.api.app.schemas.api import MediaUploadRead
 
 router = APIRouter(
     prefix="/v1/media",
     tags=["media"],
-    dependencies=[Depends(require_api_key)],
+    dependencies=[Depends(require_operator)],
 )
 
 ALLOWED_SUFFIXES = {".mp4", ".webm", ".mov"}

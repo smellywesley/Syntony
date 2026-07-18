@@ -5,7 +5,7 @@ from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from services.api.app.db.base import Base
@@ -13,6 +13,25 @@ from services.api.app.db.base import Base
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+class Operator(Base):
+    """A clinic/study operator authorized to run captures.
+
+    Replaces the single global API key: each operator (or site) holds its own
+    secret, stored only as a SHA-256 hash, scoped to a study and independently
+    revocable. Patients never hold or see an operator key.
+    """
+
+    __tablename__ = "operators"
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    label: Mapped[str] = mapped_column(String(120))
+    # NULL study_id means the key is valid for every study (e.g. the bootstrap key).
+    study_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+    key_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class ParticipantStatus(StrEnum):

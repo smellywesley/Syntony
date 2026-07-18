@@ -27,7 +27,7 @@ Temporal coupling remains **exploratory**.
 
 ## What is executable
 
-- API-key-protected FastAPI endpoints
+- Operator-key-protected FastAPI endpoints (per-operator/site keys, hashed and revocable; patients never enter a key)
 - Race-safe participant session numbering in PostgreSQL
 - Protocol validation through JSON Schema and exact-frequency semantic checks
 - Local media path containment, SHA-256 verification and `ffprobe` validation
@@ -61,11 +61,16 @@ GET  /v1/sessions/{id}/visualization
 POST /v1/task-instances/{id}/repeat   # optional after acceptance
 ```
 
-All `/v1` endpoints require:
+All `/v1` endpoints require an operator key, validated against the `operators`
+table (hashed, per-operator/site, revocable):
 
 ```text
-X-HandVoice-API-Key: <configured key>
+Authorization: Bearer <operator key>
 ```
+
+The legacy `X-HandVoice-API-Key: <operator key>` header is still accepted for
+backward compatibility. The capture app stores the operator key once per device
+so participants never enter a credential.
 
 ## Quick start
 
@@ -78,22 +83,26 @@ Set-ExecutionPolicy -Scope Process Bypass
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -e ".[dev]"
-$env:HANDVOICE_API_KEY = python -c "import secrets; print(secrets.token_urlsafe(32))"
+$env:HANDVOICE_BOOTSTRAP_KEY = python -c "import secrets; print(secrets.token_urlsafe(32))"
 pytest
 uvicorn services.api.app.main:app --reload
 ```
 
-The server refuses to start if `HANDVOICE_API_KEY` is unset or left at a known placeholder value — it must be a unique secret.
+`HANDVOICE_BOOTSTRAP_KEY` seeds the first operator on startup so a fresh
+deployment is reachable; the API always fails closed without a valid operator
+key, and the server refuses to seed a known placeholder value. Provision
+additional operators (per site/clinician) as their own rows, each independently
+revocable.
 
 Open `http://127.0.0.1:8000/capture/` for the capture interface or `http://127.0.0.1:8000/docs` for the API.
 
 ## Verified status
 
 ```text
-57 passed
+64 passed
 ```
 
-The test suite includes adversarial regression tests for the greedy coupling failure, overlapping VAD intervals, duplicate protocol codes, malformed hand landmarks, A/V start skew, active-window drift, storage-path escape, bounded upload, authorization, synchronous measurement, DTC, visualization, conditional repeat creation, placeholder-API-key startup refusal, duplicate-recording rejection, test-retest reliability (ICC/SEM/MDC), tapping sequence-effect features, DDK onset agreement, capture confounds, and the synthetic validation harness.
+The test suite includes adversarial regression tests for the greedy coupling failure, overlapping VAD intervals, duplicate protocol codes, malformed hand landmarks, A/V start skew, active-window drift, storage-path escape, bounded upload, operator-key authorization (unknown key rejected, legacy header still works), placeholder-bootstrap-key seeding refusal, synchronous measurement, DTC, visualization, conditional repeat creation, duplicate-recording rejection, test-retest reliability (ICC/SEM/MDC), tapping sequence-effect features, DDK onset agreement, capture confounds, and the synthetic validation harness.
 
 ## Engineering validation
 
@@ -109,8 +118,8 @@ The Docker configuration is **local competition development only**. PostgreSQL i
 
 ```powershell
 Copy-Item .env.example .env
-# Edit .env: HANDVOICE_API_KEY must be replaced with a unique secret,
-# or the API container will refuse to start.
+# Edit .env: HANDVOICE_BOOTSTRAP_KEY must be replaced with a unique secret.
+# It seeds the first operator; a placeholder value is refused.
 docker compose up --build
 ```
 

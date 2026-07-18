@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from services.api.app.core.security import require_api_key
+from services.api.app.core.security import require_operator
 from services.api.app.db.session import get_db
 from services.api.app.models.entities import AssessmentSession, Event, Feature, TaskInstance
 from services.api.app.schemas.api import (
@@ -22,7 +22,7 @@ from services.api.app.schemas.api import (
 from services.api.app.services.measurement import schedule_repeat, session_metrics, submit_measurement
 from services.api.app.services.sessions import create_session
 
-router = APIRouter(prefix="/v1", tags=["sessions"], dependencies=[Depends(require_api_key)])
+router = APIRouter(prefix="/v1", tags=["sessions"], dependencies=[Depends(require_operator)])
 
 
 def _get_session(db: Session, session_id: UUID) -> AssessmentSession:

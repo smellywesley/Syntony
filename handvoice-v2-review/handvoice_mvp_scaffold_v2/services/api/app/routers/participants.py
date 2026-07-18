@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from services.api.app.core.security import require_api_key
+from services.api.app.core.security import require_operator
 from services.api.app.db.session import get_db
 from services.api.app.models.entities import Participant
 from services.api.app.schemas.api import ParticipantCreate, ParticipantRead
@@ -10,7 +10,7 @@ from services.api.app.schemas.api import ParticipantCreate, ParticipantRead
 router = APIRouter(
     prefix="/v1/participants",
     tags=["participants"],
-    dependencies=[Depends(require_api_key)],
+    dependencies=[Depends(require_operator)],
 )
 
 

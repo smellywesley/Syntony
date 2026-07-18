@@ -15,8 +15,8 @@ Set-ExecutionPolicy -Scope Process Bypass
 python -m pip install --upgrade pip
 python -m pip install -e ".[dev]"
 
-# The server refuses placeholder keys; generate a unique secret.
-$env:HANDVOICE_API_KEY = python -c "import secrets; print(secrets.token_urlsafe(32))"
+# Seeds the first operator; a placeholder value is refused. Generate a unique secret.
+$env:HANDVOICE_BOOTSTRAP_KEY = python -c "import secrets; print(secrets.token_urlsafe(32))"
 $env:HANDVOICE_STORAGE_ROOT = ".local_storage"
 
 pytest
@@ -29,16 +29,16 @@ Open:
 http://127.0.0.1:8000/docs
 ```
 
-Use this header for `/v1` routes (the key you generated above):
+Use this header for `/v1` routes (the operator key you generated above):
 
 ```text
-X-HandVoice-API-Key: <your generated key>
+Authorization: Bearer <your generated key>
 ```
 
 Expected verified test result:
 
 ```text
-38 passed
+64 passed
 ```
 
 ## Docker

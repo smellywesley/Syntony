@@ -1,5 +1,6 @@
-"""Regression tests for the pre-ship review fixes: placeholder API keys must not
-serve traffic, and a task instance can never accumulate two recordings."""
+"""Regression tests for the pre-ship review fixes: placeholder bootstrap keys
+must not seed a working operator, and a task instance can never accumulate two
+recordings."""
 
 from uuid import uuid4
 
@@ -38,20 +39,37 @@ def test_second_recording_for_same_task_instance_is_rejected():
 
 @pytest.mark.parametrize(
     "placeholder",
-    sorted(main.KNOWN_DEFAULT_API_KEYS),
+    sorted(main.KNOWN_DEFAULT_KEYS),
 )
-def test_server_refuses_to_start_with_placeholder_api_key(placeholder, monkeypatch):
-    monkeypatch.setattr(main, "get_settings", lambda: Settings(api_key=placeholder))
+def test_server_refuses_placeholder_bootstrap_key(placeholder, monkeypatch):
+    monkeypatch.setattr(
+        main,
+        "get_settings",
+        lambda: Settings(bootstrap_key=placeholder, auto_create_schema=False),
+    )
     with pytest.raises(RuntimeError, match="placeholder"):
         with TestClient(main.app):
             pass
 
 
-def test_server_starts_with_real_api_key(monkeypatch):
+def test_server_starts_with_real_bootstrap_key(monkeypatch):
     monkeypatch.setattr(
         main,
         "get_settings",
-        lambda: Settings(api_key="a-genuinely-unique-secret", auto_create_schema=False),
+        lambda: Settings(bootstrap_key="a-genuinely-unique-secret", auto_create_schema=False),
+    )
+    # Seeding needs a live DB; the seeding logic itself is covered by
+    # test_operator_auth, so stub it here to isolate the startup guard.
+    monkeypatch.setattr(main, "seed_bootstrap_operator", lambda *args, **kwargs: None)
+    with TestClient(main.app):
+        pass
+
+
+def test_server_starts_without_bootstrap_key(monkeypatch):
+    monkeypatch.setattr(
+        main,
+        "get_settings",
+        lambda: Settings(bootstrap_key=None, auto_create_schema=False),
     )
     with TestClient(main.app):
         pass

@@ -14,12 +14,20 @@
         <p class="lede">Three tasks. Fifteen seconds each. No diagnosis.</p>
       </header>
 
+      <section class="panel operator-setup" hidden id="operator-setup" aria-labelledby="operator-title">
+        <h2 id="operator-title">Operator setup</h2>
+        <p class="hint">Enter the operator key once for this device. It is stored locally and reused for every participant &mdash; participants never enter a key.</p>
+        <label>Operator key <input id="operator-key" type="password" autocomplete="off" /></label>
+        <button id="save-operator" type="button">Save on this device</button>
+      </section>
+
       <section class="panel setup" aria-labelledby="setup-title">
         <h2 id="setup-title">Start a session</h2>
-        <label>API key <input id="api-key" type="password" autocomplete="off" /></label>
+        <p class="operator-status" id="operator-status" aria-live="polite"></p>
         <label>Study ID <input id="study-id" value="HV-FEASIBILITY" maxlength="100" /></label>
         <label>Participant reference <input id="participant-ref" placeholder="e.g. demo-001" maxlength="255" /></label>
         <button id="start-session" type="button">Connect camera and create session</button>
+        <button id="change-operator" class="link-button" type="button" hidden>Change operator key</button>
       </section>
 
       <section class="capture-grid" hidden id="capture-area">
