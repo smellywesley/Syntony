@@ -38,7 +38,7 @@ Authorization: Bearer <your generated key>
 Expected verified test result:
 
 ```text
-64 passed
+73 passed
 ```
 
 ## Docker
