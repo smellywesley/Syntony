@@ -216,7 +216,7 @@ Set comparison alone is insufficient because it ignores duplicates.
 
 The competition API uses a coarse local security boundary:
 
-- All `/v1` endpoints require `X-HandVoice-API-Key`.
+- All `/v1` endpoints require an operator key (`Authorization: Bearer`, or the legacy `X-HandVoice-API-Key` header), validated against the hashed, revocable `operators` table rather than a single global key.
 - Clients submit a relative storage key, not an arbitrary URI.
 - The resolved path must remain inside the configured media root.
 - The media file must exist.

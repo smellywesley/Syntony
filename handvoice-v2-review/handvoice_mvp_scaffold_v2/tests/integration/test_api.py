@@ -10,7 +10,9 @@ os.environ["HANDVOICE_DATABASE_URL"] = "sqlite:///./test_handvoice.db"
 os.environ["HANDVOICE_AUTO_CREATE_SCHEMA"] = "true"
 os.environ["HANDVOICE_PROTOCOL_PATH"] = "configs/protocol.v1.yaml"
 os.environ["HANDVOICE_STORAGE_ROOT"] = ".test_storage"
-os.environ["HANDVOICE_API_KEY"] = "test-api-key"
+# Seeds the first operator on app startup; the API validates keys against the
+# operators table, so this key must be presented on every authenticated request.
+os.environ["HANDVOICE_BOOTSTRAP_KEY"] = "test-operator-key"
 
 from fastapi.testclient import TestClient
 
@@ -22,7 +24,8 @@ from services.api.app.db.session import engine
 from services.api.app.main import app
 from services.api.app.models.entities import Feature, TaskInstance
 
-HEADERS = {"X-HandVoice-API-Key": "test-api-key"}
+HEADERS = {"Authorization": "Bearer test-operator-key"}
+LEGACY_HEADERS = {"X-HandVoice-API-Key": "test-operator-key"}
 STORAGE = Path(".test_storage")
 MEDIA = STORAGE / "capture.mp4"
 
@@ -116,6 +119,26 @@ def test_api_requires_key():
         assert response.status_code == 401
 
 
+def test_unknown_operator_key_is_rejected():
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/participants",
+            headers={"Authorization": "Bearer not-a-real-operator-key"},
+            json={"study_id": "HV-PILOT-001"},
+        )
+        assert response.status_code == 401
+
+
+def test_legacy_api_key_header_still_authenticates():
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/participants",
+            headers=LEGACY_HEADERS,
+            json={"study_id": "HV-PILOT-001", "external_reference": "legacy-header-demo"},
+        )
+        assert response.status_code == 201
+
+
 def test_media_upload_returns_generated_contained_key():
     with TestClient(app) as client:
         response = client.post(
@@ -204,6 +227,24 @@ def test_three_task_synchronous_measurement_path():
         assert "amplitude_decrement_slope" in t01_features
         assert "halt_count" in t01_features
         assert "achieved_frame_rate_hz" in t01_features
+
+        # Acoustic voice features are decoded from the waveform and persisted for
+        # the speech-only task even though it supplied its own DDK annotations.
+        with Session(engine) as db:
+            t02_features = set(
+                db.scalars(
+                    select(Feature.feature_name)
+                    .join(TaskInstance, Feature.task_instance_id == TaskInstance.id)
+                    .where(TaskInstance.id == UUID(tasks["T02"]["id"]))
+                ).all()
+            )
+        assert "mean_f0_hz" in t02_features
+        assert "jitter_local_percent" in t02_features
+        assert "mean_hnr_db" in t02_features
+        # DDK temporal fine-structure features are persisted for the speech task.
+        assert "ddk_ioi_mean_ms" in t02_features
+        assert "ddk_rate_variance_hz2" in t02_features
+        assert "ddk_rate_decrement_slope" in t02_features
 
         visualization = client.get(
             f"/v1/sessions/{body['id']}/visualization", headers=HEADERS

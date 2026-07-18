@@ -1,6 +1,18 @@
 -- Human-readable PostgreSQL schema excerpt.
 -- SQLAlchemy models remain the source of truth.
 
+-- Multi-user auth: each clinic/study operator holds its own hashed key,
+-- scoped to a study and independently revocable. Replaces the single global key.
+CREATE TABLE operators (
+    id UUID PRIMARY KEY,
+    label VARCHAR(120) NOT NULL,
+    study_id VARCHAR(100),
+    key_hash VARCHAR(64) NOT NULL UNIQUE,
+    active BOOLEAN NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    revoked_at TIMESTAMPTZ
+);
+
 CREATE TABLE participants (
     id UUID PRIMARY KEY,
     study_id VARCHAR(100) NOT NULL,

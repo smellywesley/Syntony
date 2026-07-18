@@ -6,12 +6,14 @@ from fastapi.staticfiles import StaticFiles
 
 from services.api.app.core.config import get_settings
 from services.api.app.db.base import Base
-from services.api.app.db.session import engine
+from services.api.app.db.session import SessionLocal, engine
 from services.api.app.routers import health, media, participants, sessions
+from services.api.app.services.operators import seed_bootstrap_operator
 
-# Placeholder keys shipped in config defaults, docker-compose, and .env.example.
-# The API refuses to serve with any of these: they guard participant media.
-KNOWN_DEFAULT_API_KEYS = frozenset(
+# Placeholder values that must never authenticate a real deployment. A
+# bootstrap key set to any of these is rejected so a shipped default cannot
+# accidentally seed a working operator.
+KNOWN_DEFAULT_KEYS = frozenset(
     {
         "local-development-only-change-me",
         "change-this-api-key",
@@ -22,13 +24,18 @@ KNOWN_DEFAULT_API_KEYS = frozenset(
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    if get_settings().api_key in KNOWN_DEFAULT_API_KEYS:
-        raise RuntimeError(
-            "HANDVOICE_API_KEY is a known placeholder value; set a unique secret "
-            "(e.g. python -c \"import secrets; print(secrets.token_urlsafe(32))\") before serving"
-        )
-    if get_settings().auto_create_schema:
+    settings = get_settings()
+    if settings.auto_create_schema:
         Base.metadata.create_all(bind=engine)
+    bootstrap = settings.bootstrap_key
+    if bootstrap:
+        if bootstrap in KNOWN_DEFAULT_KEYS:
+            raise RuntimeError(
+                "HANDVOICE_BOOTSTRAP_KEY is a known placeholder value; set a unique "
+                'secret (e.g. python -c "import secrets; print(secrets.token_urlsafe(32))")'
+            )
+        with SessionLocal() as db:
+            seed_bootstrap_operator(db, bootstrap)
     yield
 
 

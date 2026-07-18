@@ -13,7 +13,11 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./handvoice.db"
     protocol_path: Path = Path("configs/protocol.v1.yaml")
     storage_root: Path = Path(".local_storage")
-    api_key: str = "local-development-only-change-me"
+    # Optional first-operator seed. On startup an active operator with this key
+    # is created if none matches yet, so a fresh deployment is reachable. Leave
+    # unset once real operators exist; the API always fails closed without a
+    # valid operator key.
+    bootstrap_key: str | None = None
     auto_create_schema: bool = True
     maximum_media_bytes: int = 64 * 1024 * 1024
 

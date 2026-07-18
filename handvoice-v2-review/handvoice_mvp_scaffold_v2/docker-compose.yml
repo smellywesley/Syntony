@@ -22,7 +22,7 @@ services:
       HANDVOICE_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-handvoice}:${POSTGRES_PASSWORD:-change-this-local-password}@postgres:5432/${POSTGRES_DB:-handvoice}
       HANDVOICE_PROTOCOL_PATH: configs/protocol.v1.yaml
       HANDVOICE_STORAGE_ROOT: /data/media
-      HANDVOICE_API_KEY: ${HANDVOICE_API_KEY:-change-this-api-key}
+      HANDVOICE_BOOTSTRAP_KEY: ${HANDVOICE_BOOTSTRAP_KEY:-change-this-api-key}
       HANDVOICE_AUTO_CREATE_SCHEMA: "true"
       HANDVOICE_MAXIMUM_MEDIA_BYTES: "67108864"
     ports:

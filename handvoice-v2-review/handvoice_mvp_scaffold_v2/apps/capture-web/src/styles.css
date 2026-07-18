@@ -14,7 +14,11 @@ h2 { margin: 0 0 16px; }
 .eyebrow, .task-code { color: #5eead4; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; font-size: .78rem; }
 .lede { color: #b7cfd2; font-size: 1.1rem; }
 .panel { background: rgba(9, 35, 45, .82); border: 1px solid rgba(148, 220, 214, .2); border-radius: 20px; padding: 22px; box-shadow: 0 18px 50px rgba(0, 0, 0, .24); }
-.setup { display: grid; gap: 14px; max-width: 680px; }
+.setup, .operator-setup { display: grid; gap: 14px; max-width: 680px; }
+.operator-setup { margin-bottom: 18px; }
+.hint { color: #9fb9bd; font-size: .92rem; margin: 0; }
+.operator-status { color: #5eead4; font-size: .92rem; margin: 0; }
+.link-button { background: none; color: #9fb9bd; padding: 4px 0; justify-self: start; font-weight: 600; text-decoration: underline; }
 label { display: grid; gap: 7px; color: #cde2e3; }
 input { width: 100%; border: 1px solid #37616a; border-radius: 10px; padding: 12px; background: #061922; color: #fff; font: inherit; }
 button { border: 0; border-radius: 999px; padding: 13px 20px; font: inherit; font-weight: 750; background: #5eead4; color: #062028; cursor: pointer; }
