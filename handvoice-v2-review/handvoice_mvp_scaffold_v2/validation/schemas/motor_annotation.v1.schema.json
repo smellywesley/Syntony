@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://handvoice.local/schemas/motor-annotation.v1.json",
+  "title": "HandVoice Blinded Motor Annotation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile_version",
+    "case_id",
+    "rater_id",
+    "annotator_blinded_to_detector",
+    "active_window_ms",
+    "event_times_ms"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "profile_version": {"const": "handvoice-motor-annotation-v1"},
+    "case_id": {"$ref": "#/$defs/safeId"},
+    "rater_id": {"$ref": "#/$defs/safeId"},
+    "annotator_blinded_to_detector": {"const": true},
+    "active_window_ms": {"const": 10000},
+    "event_times_ms": {"$ref": "#/$defs/eventTimes"}
+  },
+  "$defs": {
+    "safeId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "eventTimes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 300,
+      "uniqueItems": true,
+      "items": {"type": "integer", "minimum": 0, "maximum": 10000}
+    }
+  }
+}

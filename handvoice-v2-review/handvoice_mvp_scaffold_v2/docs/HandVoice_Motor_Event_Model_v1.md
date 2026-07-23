@@ -73,6 +73,7 @@ Raw media and development artifacts must remain outside Git:
 ```text
 data/external/hubu-fis/       # ignored
 models/development/           # ignored
+validation/manifests/         # ignored private case-level study manifests
 ```
 
 For each selected right-hand video:
@@ -135,6 +136,27 @@ The annotation screen is intentionally separate and shows no landmarks,
 diagnosis, UPDRS or detector output. Each rater exports an independent event
 file. Consensus adjudication and assembly of the training manifest happen only
 after both files are locked.
+
+## Assemble the training manifest
+
+Create a private study plan using
+`validation/schemas/motor_study_plan.v1.schema.json`. Each case references its
+source video, exported landmark file, at least two independent rater exports,
+the adjudicated consensus events and its assigned participant-level split.
+
+Then assemble the trainer input:
+
+```powershell
+python scripts/assemble_motor_training_manifest.py `
+  data/external/hubu-fis/study-plan.json `
+  --data-root data/external/hubu-fis `
+  --output validation/manifests/motor_training.v1.json
+```
+
+The assembler validates the study-plan and annotation schemas, rejects path
+escape, mismatched case/rater identities and participant leakage, and computes
+the landmark and source-video SHA-256 values itself. This prevents manual hash
+copying and binds the final manifest to the exact CV track and source recording.
 
 ## Train
 
@@ -201,6 +223,7 @@ Implemented:
 - model training and threshold selection;
 - participant leakage protection;
 - inter-rater and consensus checks;
+- hash-verified blinded-annotation manifest assembly;
 - safe JSON artifact loading;
 - model confidence and provenance persistence;
 - disabled-by-default T01 integration;

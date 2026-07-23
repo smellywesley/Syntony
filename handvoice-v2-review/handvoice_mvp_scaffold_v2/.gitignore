@@ -18,3 +18,4 @@ build/
 *.partial
 /data/external/
 /models/development/
+/validation/manifests/
