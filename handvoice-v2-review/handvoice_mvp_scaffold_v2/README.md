@@ -33,6 +33,7 @@ Temporal coupling remains **exploratory**.
 - Local media path containment, SHA-256 verification and `ffprobe` validation
 - Hand-signal derivation from 21-landmark frames
 - Tap-event and rhythm extraction
+- Guarded temporal motor-event ML pipeline layered on MediaPipe tracking
 - Raw-audio energy/VAD baseline or supplied annotated DDK events
 - Acoustic voice features (F0 mean/variability, local jitter, local shimmer, HNR) via autocorrelation pitch tracking
 - DDK temporal fine structure (inter-onset interval mean/SD, inter-syllable dwell time, instantaneous-rate variance, rate-decrement slope)
@@ -185,6 +186,27 @@ is synthetic and intentionally cannot pass the human-recording gate. Even a
 real-corpus pass supports event-detector agreement only, not clinical validity
 or diagnosis.
 
+## Optional trained motor-event layer
+
+HandVoice includes a compact, trainable temporal event model that consumes the
+same MediaPipe landmark and tracking-quality stream as the deterministic
+detector. It is disabled by default and applies to `T01` only. The API rejects
+an enabled artifact unless it records blinded human annotations,
+participant-grouped evaluation and a passing frozen event-agreement gate.
+
+Training and data contracts are documented in
+`docs/HandVoice_Motor_Event_Model_v1.md`. No human-trained release artifact is
+currently bundled, and this capability does not add Parkinson's diagnosis or
+MDS-UPDRS prediction.
+
+The local-only research utility at `/capture/research-extractor.html` converts
+an approved prerecorded video into the same MediaPipe landmark contract used
+by live capture. It does not upload the video and is not part of the
+participant-facing workflow.
+
+Blinded raters use the separate local `/capture/motor-annotator.html` utility,
+which deliberately shows neither CV landmarks nor detector output.
+
 ## Docker
 
 The Docker configuration is **local competition development only**. PostgreSQL is not published to the host, Redis and the nonfunctional worker have been removed, and the API binds to `127.0.0.1:8000`.
@@ -194,12 +216,17 @@ overwrite an existing valid `.env`.
 
 ## Canonical documentation
 
+![HandVoice end-to-end system architecture](docs/assets/handvoice-system-architecture.svg)
+
 - `docs/HandVoice_Canonical_Competition_MVP_v4.md` — controlling scope and architecture
+- `docs/HandVoice_System_Architecture_2026-07-23.md` — complete runtime,
+  data-flow, model-lifecycle, persistence and deployment diagrams
 - `docs/HandVoice_Evidence_Appendix_v1.md` — research evidence only
 - `docs/api-flow.md` — executable route sequence
 - `docs/architecture-decisions.md` — current ADRs
 
 - `docs/HandVoice_Conference_Validation_Plan_v1.md` - frozen non-clinical validation and claim boundary
 - `docs/HandVoice_Measurement_Agreement_Protocol_v1.md` - locked annotation and detector-agreement gates
+- `docs/HandVoice_Motor_Event_Model_v1.md` - CV-supported ML architecture, training contract and release gate
 
 Earlier broad architecture documents are superseded for competition implementation.

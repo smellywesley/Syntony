@@ -1,0 +1,200 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title description">
+  <title id="title">HandVoice system architecture</title>
+  <desc id="description">End-to-end HandVoice architecture from operator and participant through browser capture, MediaPipe computer vision, the FastAPI backend, motor and speech processing, deterministic quality control, storage, reporting, and the separate motor-model training lifecycle.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f5fbfc"/>
+      <stop offset="1" stop-color="#e8f2f5"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#16313c" flood-opacity="0.14"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#315565"/>
+    </marker>
+    <marker id="arrowResearch" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#8a4d13"/>
+    </marker>
+    <style>
+      .title { font: 700 35px Inter, Segoe UI, Arial, sans-serif; fill: #102f3a; }
+      .subtitle { font: 400 17px Inter, Segoe UI, Arial, sans-serif; fill: #48656f; }
+      .band-title { font: 700 18px Inter, Segoe UI, Arial, sans-serif; letter-spacing: 1.2px; fill: #365761; }
+      .box-title { font: 700 19px Inter, Segoe UI, Arial, sans-serif; fill: #102f3a; }
+      .box-copy { font: 400 15px Inter, Segoe UI, Arial, sans-serif; fill: #31515d; }
+      .small { font: 600 13px Inter, Segoe UI, Arial, sans-serif; fill: #48656f; }
+      .pill { font: 700 12px Inter, Segoe UI, Arial, sans-serif; letter-spacing: .7px; }
+      .inverse-title { fill: #ffffff; }
+      .inverse-copy { fill: #e8f6f7; }
+      .inverse-small { fill: #bfe2e5; }
+      .research-inverse-copy { fill: #fff7ed; }
+      .research-inverse-small { fill: #f5dfc6; }
+      .runtime-line { fill: none; stroke: #315565; stroke-width: 3; marker-end: url(#arrow); }
+      .return-line { fill: none; stroke: #087b83; stroke-width: 3; marker-end: url(#arrow); }
+      .research-line { fill: none; stroke: #8a4d13; stroke-width: 3; marker-end: url(#arrowResearch); }
+      .research-dash { fill: none; stroke: #8a4d13; stroke-width: 3; stroke-dasharray: 8 7; marker-end: url(#arrowResearch); }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1000" fill="url(#background)"/>
+  <text x="52" y="58" class="title">HandVoice · End-to-End System Architecture</text>
+  <text x="52" y="88" class="subtitle">Runtime measurement path and the separate release-gated motor-model lifecycle</text>
+
+  <rect x="52" y="112" width="178" height="30" rx="15" fill="#d7ecef"/>
+  <text x="141" y="132" text-anchor="middle" class="pill" fill="#17636b">RUNTIME PATH</text>
+
+  <g filter="url(#shadow)">
+    <rect x="52" y="170" width="230" height="180" rx="20" fill="#ffffff" stroke="#9bbbc2" stroke-width="2"/>
+    <circle cx="93" cy="216" r="18" fill="#d7ecef"/>
+    <circle cx="93" cy="211" r="6" fill="#17636b"/>
+    <path d="M80 231 Q93 218 106 231" fill="none" stroke="#17636b" stroke-width="4" stroke-linecap="round"/>
+    <text x="126" y="214" class="box-title">People</text>
+    <text x="76" y="262" class="box-copy">Trained operator</text>
+    <text x="76" y="288" class="box-copy">Participant</text>
+    <text x="76" y="318" class="small">Coded identity only</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="342" y="150" width="390" height="220" rx="20" fill="#ffffff" stroke="#5fa7ad" stroke-width="2"/>
+    <rect x="366" y="176" width="342" height="42" rx="10" fill="#dff3f4"/>
+    <text x="537" y="203" text-anchor="middle" class="box-title">Operator-controlled browser</text>
+    <text x="372" y="247" class="box-copy">Camera + microphone → MediaRecorder</text>
+    <text x="372" y="276" class="box-copy">Local MediaPipe → 21 hand landmarks</text>
+    <text x="372" y="305" class="box-copy">Handedness, confidence and validity</text>
+    <text x="372" y="338" class="small">One synchronized A/V file · 10 s active window</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="792" y="150" width="330" height="220" rx="20" fill="#ffffff" stroke="#547e95" stroke-width="2"/>
+    <rect x="816" y="176" width="282" height="42" rx="10" fill="#e3edf4"/>
+    <text x="957" y="203" text-anchor="middle" class="box-title">FastAPI monolith</text>
+    <text x="822" y="247" class="box-copy">Operator auth + study authorization</text>
+    <text x="822" y="276" class="box-copy">Participant, session and task APIs</text>
+    <text x="822" y="305" class="box-copy">Media upload + synchronous analysis</text>
+    <text x="822" y="338" class="small">No active worker · no diagnostic classifier</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1182" y="150" width="366" height="220" rx="20" fill="#ffffff" stroke="#718e99" stroke-width="2"/>
+    <rect x="1206" y="176" width="318" height="42" rx="10" fill="#e9f0f2"/>
+    <text x="1365" y="203" text-anchor="middle" class="box-title">Controlled persistence</text>
+    <text x="1216" y="247" class="box-copy">PostgreSQL · SQLite in native demo</text>
+    <text x="1216" y="276" class="box-copy">Contained media filesystem</text>
+    <text x="1216" y="305" class="box-copy">Events, features, versions and audit</text>
+    <text x="1216" y="338" class="small">Report JSON + accessible SVG timeline</text>
+  </g>
+
+  <path class="runtime-line" d="M282 260 H342"/>
+  <path class="runtime-line" d="M732 260 H792"/>
+  <path class="runtime-line" d="M1122 260 H1182"/>
+  <text x="312" y="246" text-anchor="middle" class="small">guided capture</text>
+  <text x="762" y="246" text-anchor="middle" class="small">HTTPS/API*</text>
+  <text x="1152" y="246" text-anchor="middle" class="small">persist</text>
+
+  <text x="52" y="423" class="band-title">SYNCHRONOUS MEASUREMENT PIPELINE</text>
+
+  <g filter="url(#shadow)">
+    <rect x="52" y="452" width="252" height="160" rx="18" fill="#ffffff" stroke="#7c9daa" stroke-width="2"/>
+    <text x="178" y="487" text-anchor="middle" class="box-title">Integrity</text>
+    <text x="76" y="522" class="box-copy">Path containment</text>
+    <text x="76" y="548" class="box-copy">SHA-256 verification</text>
+    <text x="76" y="574" class="box-copy">FFprobe A/V validation</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="360" y="432" width="294" height="200" rx="18" fill="#ffffff" stroke="#31868d" stroke-width="2"/>
+    <rect x="384" y="454" width="246" height="34" rx="9" fill="#dff3f4"/>
+    <text x="507" y="477" text-anchor="middle" class="box-title">Motor branch</text>
+    <text x="388" y="519" class="box-copy">Landmark geometry + tracking guards</text>
+    <text x="388" y="548" class="box-copy">Deterministic peaks by default</text>
+    <text x="388" y="577" class="box-copy">Optional temporal model for T01</text>
+    <text x="388" y="606" class="small">Events · rate · rhythm · sequence effect</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="710" y="432" width="294" height="200" rx="18" fill="#ffffff" stroke="#6c78a8" stroke-width="2"/>
+    <rect x="734" y="454" width="246" height="34" rx="9" fill="#e9eaf6"/>
+    <text x="857" y="477" text-anchor="middle" class="box-title">Speech branch</text>
+    <text x="738" y="519" class="box-copy">16 kHz active-window decode</text>
+    <text x="738" y="548" class="box-copy">Energy/VAD candidate DDK events</text>
+    <text x="738" y="577" class="box-copy">Timing + exploratory acoustics</text>
+    <text x="738" y="606" class="small">F0 · jitter · shimmer · HNR · pauses</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1060" y="452" width="250" height="160" rx="18" fill="#ffffff" stroke="#bb7b32" stroke-width="2"/>
+    <text x="1185" y="487" text-anchor="middle" class="box-title">Quality gate</text>
+    <text x="1086" y="522" class="box-copy">Deterministic thresholds</text>
+    <text x="1086" y="548" class="box-copy">Accept · retry · review</text>
+    <text x="1086" y="580" class="small">A model cannot override QC</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1366" y="452" width="182" height="160" rx="18" fill="#123e4a"/>
+    <text x="1457" y="487" text-anchor="middle" class="box-title inverse-title">Outcome</text>
+    <text x="1391" y="524" class="box-copy inverse-copy">Accepted → store</text>
+    <text x="1391" y="551" class="box-copy inverse-copy">Rejected → delete</text>
+    <text x="1391" y="584" class="small inverse-small">Measurement only</text>
+  </g>
+
+  <path class="runtime-line" d="M304 532 H360"/>
+  <path class="runtime-line" d="M304 575 H330 V654 H680 V558 H710"/>
+  <path class="runtime-line" d="M1004 508 H1060"/>
+  <path class="runtime-line" d="M1004 568 H1060"/>
+  <path class="runtime-line" d="M1310 532 H1366"/>
+  <path class="runtime-line" d="M957 370 V400 H25 V532 H52"/>
+  <path class="return-line" d="M1457 452 V403 H1365 V370"/>
+  <path class="return-line" d="M1365 150 V118 H537 V150"/>
+
+  <rect x="52" y="688" width="230" height="30" rx="15" fill="#f4e4d2"/>
+  <text x="167" y="708" text-anchor="middle" class="pill" fill="#8a4d13">SEPARATE RESEARCH PATH</text>
+
+  <g filter="url(#shadow)">
+    <rect x="52" y="752" width="240" height="150" rx="18" fill="#fffaf4" stroke="#c58947" stroke-width="2"/>
+    <text x="172" y="788" text-anchor="middle" class="box-title">Approved videos</text>
+    <text x="79" y="824" class="box-copy">Pseudonymous source</text>
+    <text x="79" y="852" class="box-copy">Source SHA-256</text>
+    <text x="79" y="880" class="small">Never committed to Git</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="344" y="732" width="300" height="190" rx="18" fill="#fffaf4" stroke="#c58947" stroke-width="2"/>
+    <text x="494" y="768" text-anchor="middle" class="box-title">Local preparation</text>
+    <text x="371" y="806" class="box-copy">MediaPipe landmark extraction</text>
+    <text x="371" y="836" class="box-copy">Two blinded human raters</text>
+    <text x="371" y="866" class="box-copy">Consensus without detector output</text>
+    <text x="371" y="896" class="small">Hashed annotation manifest</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="696" y="732" width="300" height="190" rx="18" fill="#fffaf4" stroke="#c58947" stroke-width="2"/>
+    <text x="846" y="768" text-anchor="middle" class="box-title">Train + evaluate</text>
+    <text x="723" y="806" class="box-copy">Participant-grouped splits</text>
+    <text x="723" y="836" class="box-copy">Train → validation → untouched test</text>
+    <text x="723" y="866" class="box-copy">Precision, recall, F1 and timing</text>
+    <text x="723" y="896" class="small">Device · condition · performance strata</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1048" y="752" width="250" height="150" rx="18" fill="#fffaf4" stroke="#c58947" stroke-width="2"/>
+    <text x="1173" y="788" text-anchor="middle" class="box-title">Release gate</text>
+    <text x="1074" y="824" class="box-copy">Human agreement thresholds</text>
+    <text x="1074" y="852" class="box-copy">Clean software revision</text>
+    <text x="1074" y="880" class="small">Fail closed if not approved</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1350" y="752" width="198" height="150" rx="18" fill="#8a4d13"/>
+    <text x="1449" y="788" text-anchor="middle" class="box-title inverse-title">JSON artifact</text>
+    <text x="1375" y="824" class="box-copy research-inverse-copy">Weights + scaling</text>
+    <text x="1375" y="852" class="box-copy research-inverse-copy">Provenance + metrics</text>
+    <text x="1375" y="880" class="small research-inverse-small">T01 only</text>
+  </g>
+
+  <path class="research-line" d="M292 827 H344"/>
+  <path class="research-line" d="M644 827 H696"/>
+  <path class="research-line" d="M996 827 H1048"/>
+  <path class="research-line" d="M1298 827 H1350"/>
+  <path class="research-dash" d="M1449 752 V672 H507 V632"/>
+
+  <text x="52" y="965" class="small">* Current demonstration is loopback HTTP only. Multi-device or clinical deployment requires HTTPS and production identity, storage, monitoring and recovery controls.</text>
+</svg>

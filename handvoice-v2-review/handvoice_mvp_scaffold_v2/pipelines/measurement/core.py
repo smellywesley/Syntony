@@ -8,6 +8,7 @@ from pipelines.audio.extractor import SpeechTimingFeatures, calculate_speech_tim
 from pipelines.common.contracts import Modality, TimestampedEvent
 from pipelines.coupling.events import CouplingResult, calculate_event_coupling
 from pipelines.video.extractor import HandSignalSample
+from pipelines.video.motor_model import MotorEventDetection, MotorEventDetector
 
 
 @dataclass(frozen=True, slots=True)
@@ -151,6 +152,7 @@ class MeasurementResult:
     sequence_effect: SequenceEffect | None
     ddk_dynamics: DdkDynamics | None
     coupling: CouplingResult | None
+    motor_detection: MotorEventDetection | None
 
 
 def calculate_rhythm_features(event_times_ms: list[int], *, active_duration_ms: int) -> RhythmFeatures:
@@ -227,15 +229,39 @@ def analyze_measurement(
     voiced_intervals: list[tuple[int, int]],
     ddk_event_ms: list[int],
     coupling_window_ms: int,
+    motor_event_model: MotorEventDetector | None = None,
 ) -> MeasurementResult:
-    tap_times, tap_amplitudes = detect_tap_events(hand_samples)
+    if motor_event_model is not None:
+        motor_detection = motor_event_model.detect(hand_samples)
+        if not isinstance(motor_detection, MotorEventDetection):
+            raise TypeError("motor event model returned an invalid detection contract")
+    else:
+        tap_times, tap_amplitudes = detect_tap_events(hand_samples)
+        motor_detection = MotorEventDetection(
+            timestamps_ms=tuple(tap_times),
+            amplitudes=tuple(tap_amplitudes),
+            confidences=tuple(1.0 for _ in tap_times),
+            detector_kind="deterministic_peak",
+            algorithm_version="motor-deterministic:1",
+            metadata={
+                "release_gate_passed": False,
+                "clinical_validity": False,
+            },
+        )
+    tap_times = list(motor_detection.timestamps_ms)
+    tap_amplitudes = list(motor_detection.amplitudes)
     motor_events = tuple(
         TimestampedEvent(
             event_id=f"motor-{index}",
             modality=Modality.MOTOR,
             event_type="tap_opening",
             start_ms=timestamp,
-            metadata={"amplitude": tap_amplitudes[index]},
+            confidence=motor_detection.confidences[index],
+            metadata={
+                "amplitude": tap_amplitudes[index],
+                "detector_kind": motor_detection.detector_kind,
+                "detector": dict(motor_detection.metadata),
+            },
         )
         for index, timestamp in enumerate(tap_times)
     )
@@ -277,4 +303,5 @@ def analyze_measurement(
         sequence_effect=sequence_effect,
         ddk_dynamics=ddk_dynamics,
         coupling=coupling,
+        motor_detection=motor_detection if hand_samples else None,
     )

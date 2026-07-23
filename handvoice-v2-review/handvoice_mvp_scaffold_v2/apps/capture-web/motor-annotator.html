@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HandVoice blinded motor annotation</title>
+    <style>
+      :root { font-family: system-ui, sans-serif; color: #17212b; background: #f4f7f7; }
+      body { margin: 0; }
+      main { width: min(56rem, calc(100% - 2rem)); margin: 2rem auto; }
+      section { background: white; border: 1px solid #c8d3d3; border-radius: 1rem; padding: 1.25rem; }
+      .warning { border-left: .35rem solid #a54d00; padding-left: 1rem; }
+      label { display: grid; gap: .35rem; margin: 1rem 0; font-weight: 650; }
+      input, button, a { font: inherit; }
+      input { padding: .7rem; }
+      button, a[role="button"] {
+        display: inline-block; border: 0; border-radius: .6rem; padding: .75rem 1rem;
+        background: #075985; color: white; font-weight: 700; text-decoration: none;
+        margin: .25rem;
+      }
+      button:disabled { opacity: .55; }
+      video { width: 100%; max-height: 32rem; background: #111; }
+      #active-time { font-size: 1.25rem; font-weight: 750; }
+      li button { padding: .35rem .55rem; background: #7f1d1d; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Blinded maximal-opening annotation</h1>
+      <p class="warning">
+        The rater must not see HandVoice landmarks, model output, diagnosis or
+        UPDRS. Mark the maximal opening of each index-thumb tap. Use pseudonymous IDs.
+      </p>
+      <section>
+        <label>
+          Pseudonymous case ID
+          <input id="case-id" maxlength="80" autocomplete="off" placeholder="motor-001" />
+        </label>
+        <label>
+          Pseudonymous rater ID
+          <input id="rater-id" maxlength="80" autocomplete="off" placeholder="rater-a" />
+        </label>
+        <label>
+          Approved local video
+          <input id="video-file" type="file" accept="video/*" />
+        </label>
+        <label>
+          Start of ten-second active window (milliseconds)
+          <input id="active-start-ms" type="number" min="0" step="1" value="2000" />
+        </label>
+        <video id="preview" controls muted playsinline></video>
+        <p>Active-window time: <span id="active-time">No video</span></p>
+        <button id="mark" type="button">Mark maximal opening (Space)</button>
+        <button id="undo" type="button" disabled>Undo last</button>
+        <p id="status" aria-live="polite">No annotation in progress.</p>
+        <h2>Marked events</h2>
+        <ol id="events"></ol>
+        <button id="prepare-download" type="button">Prepare annotation file</button>
+        <a id="download" role="button" hidden>Download blinded annotation</a>
+      </section>
+    </main>
+    <script type="module" src="/src/motor-annotator.ts"></script>
+  </body>
+</html>

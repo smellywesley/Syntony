@@ -9,6 +9,7 @@ from services.api.app.db.base import Base
 from services.api.app.db.session import SessionLocal, engine
 from services.api.app.routers import health, media, participants, sessions
 from services.api.app.services.operators import seed_bootstrap_operator
+from services.api.app.services.measurement import configured_motor_event_model
 
 # Placeholder values that must never authenticate a real deployment. A
 # bootstrap key set to any of these is rejected so a shipped default cannot
@@ -33,6 +34,9 @@ async def lifespan(_: FastAPI):
     if settings.auto_create_schema:
         Base.metadata.create_all(bind=engine)
     settings.storage_root.resolve().mkdir(parents=True, exist_ok=True)
+    if settings.motor_event_model_enabled:
+        # Fail at startup rather than silently reverting after a capture.
+        configured_motor_event_model(settings)
     bootstrap = settings.bootstrap_key
     if bootstrap:
         if bootstrap in KNOWN_DEFAULT_KEYS:

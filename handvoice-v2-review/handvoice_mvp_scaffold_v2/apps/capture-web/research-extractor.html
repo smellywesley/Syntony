@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HandVoice research landmark extractor</title>
+    <style>
+      :root { font-family: system-ui, sans-serif; color: #17212b; background: #f4f7f7; }
+      body { margin: 0; }
+      main { width: min(52rem, calc(100% - 2rem)); margin: 2rem auto; }
+      section { background: white; border: 1px solid #c8d3d3; border-radius: 1rem; padding: 1.25rem; }
+      .warning { border-left: .35rem solid #a54d00; padding-left: 1rem; }
+      label { display: grid; gap: .35rem; margin: 1rem 0; font-weight: 650; }
+      input, button, a { font: inherit; }
+      input { padding: .7rem; }
+      button, a[role="button"] {
+        display: inline-block; border: 0; border-radius: .6rem; padding: .75rem 1rem;
+        background: #075985; color: white; font-weight: 700; text-decoration: none;
+      }
+      button:disabled { opacity: .55; }
+      video { width: 100%; max-height: 28rem; background: #111; margin-top: 1rem; }
+      progress { width: 100%; height: 1.25rem; }
+      code { overflow-wrap: anywhere; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Research landmark extractor</h1>
+      <p class="warning">
+        Approved research data only. Files are processed locally and are not uploaded.
+        Use pseudonymous case IDs; do not enter participant names or medical record numbers.
+      </p>
+      <section>
+        <label>
+          Pseudonymous case ID
+          <input id="case-id" maxlength="80" autocomplete="off" placeholder="motor-001" />
+        </label>
+        <label>
+          Approved local video
+          <input id="video-file" type="file" accept="video/*" />
+        </label>
+        <label>
+          Start of the ten-second active window (milliseconds)
+          <input id="active-start-ms" type="number" min="0" step="1" value="2000" />
+        </label>
+        <label>
+          <span>
+            <input id="input-mirrored" type="checkbox" checked />
+            Source video uses a mirrored hand convention
+          </span>
+          <small>
+            HUBU-FIS right-hand clips require this correction. Confirm it from
+            source metadata; do not choose it to make a failed case pass.
+          </small>
+        </label>
+        <button id="extract" type="button">Extract tracked landmarks locally</button>
+        <p id="status" aria-live="polite">No file processed.</p>
+        <progress id="progress" value="0" max="1" aria-label="Extraction progress"></progress>
+        <p>Source video SHA-256: <code id="source-hash"></code></p>
+        <p id="tracking-summary"></p>
+        <a id="download" role="button" hidden>Download landmark JSON</a>
+        <video id="preview" controls muted playsinline></video>
+      </section>
+    </main>
+    <script type="module" src="/src/research-extractor.ts"></script>
+  </body>
+</html>

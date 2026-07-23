@@ -106,6 +106,21 @@ def test_server_refuses_demo_auth_bypass_outside_native_demo(monkeypatch):
             pass
 
 
+def test_server_refuses_enabled_motor_model_without_artifact_path(monkeypatch):
+    monkeypatch.setattr(
+        main,
+        "get_settings",
+        lambda: Settings(
+            motor_event_model_enabled=True,
+            motor_event_model_path=None,
+            auto_create_schema=False,
+        ),
+    )
+    with pytest.raises(RuntimeError, match="MOTOR_EVENT_MODEL_PATH"):
+        with TestClient(main.app):
+            pass
+
+
 @pytest.mark.parametrize(
     ("host", "expected"),
     [

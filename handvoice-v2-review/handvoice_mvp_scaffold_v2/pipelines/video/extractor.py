@@ -7,6 +7,8 @@ from typing import Sequence
 
 from pipelines.video.contracts import FrameValidity, LandmarkFrame
 
+MINIMUM_TRACKING_CONFIDENCE = 0.5
+
 
 @dataclass(frozen=True, slots=True)
 class HandSignalSample:
@@ -16,6 +18,7 @@ class HandSignalSample:
     valid: bool
     quality_reason: str | None = None
     palm_scale: float | None = None  # hand-distance proxy for confound logging
+    tracking_confidence: float | None = None
 
 
 def _distance(a: Sequence[float], b: Sequence[float]) -> float:
@@ -43,6 +46,24 @@ def derive_hand_signal(frames: list[LandmarkFrame]) -> list[HandSignalSample]:
         valid_status = frame.validity in {FrameValidity.VALID, FrameValidity.INTERPOLATED_SHORT_GAP}
         if not valid_status:
             samples.append(HandSignalSample(frame.timestamp_ms, None, None, False, frame.validity.value))
+            continue
+        if (
+            frame.validity == FrameValidity.VALID
+            and (
+                not isfinite(frame.median_confidence)
+                or frame.median_confidence < MINIMUM_TRACKING_CONFIDENCE
+            )
+        ):
+            samples.append(
+                HandSignalSample(
+                    frame.timestamp_ms,
+                    None,
+                    None,
+                    False,
+                    "low_tracking_confidence",
+                    tracking_confidence=frame.median_confidence,
+                )
+            )
             continue
         landmarks = frame.landmarks_xyz
         if len(landmarks) < 18:
@@ -73,6 +94,7 @@ def derive_hand_signal(frames: list[LandmarkFrame]) -> list[HandSignalSample]:
                     normalized_thumb_index_distance=normalized_distance,
                     valid=True,
                     palm_scale=palm_scale,
+                    tracking_confidence=frame.median_confidence,
                 )
             )
         except (IndexError, TypeError, ValueError, ZeroDivisionError):

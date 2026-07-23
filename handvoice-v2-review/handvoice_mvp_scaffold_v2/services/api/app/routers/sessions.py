@@ -102,7 +102,7 @@ def measure_task(
 ) -> MeasurementRead:
     if not valid_pending_upload_key(payload.storage_key):
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="storage key is not a valid pending media object",
         )
     if not operator_owns_pending_upload(operator, payload.storage_key):

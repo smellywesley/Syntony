@@ -8,6 +8,7 @@ def test_malformed_landmark_count_becomes_invalid_sample():
     frame = SimpleNamespace(
         timestamp_ms=100,
         landmarks_xyz=((0.0, 0.0, 0.0),) * 10,
+        median_confidence=0.95,
         validity=FrameValidity.VALID,
     )
     result = derive_hand_signal([frame])
@@ -19,6 +20,7 @@ def test_zero_palm_scale_becomes_invalid_sample():
     frame = SimpleNamespace(
         timestamp_ms=100,
         landmarks_xyz=((0.0, 0.0, 0.0),) * 21,
+        median_confidence=0.95,
         validity=FrameValidity.VALID,
     )
     result = derive_hand_signal([frame])

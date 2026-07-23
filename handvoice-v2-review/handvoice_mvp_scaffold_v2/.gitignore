@@ -16,3 +16,5 @@ build/
 **/incoming/
 **/processing/
 *.partial
+/data/external/
+/models/development/

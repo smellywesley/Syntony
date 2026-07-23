@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -21,6 +23,8 @@ from pipelines.quality.decision import (
 )
 from pipelines.video.contracts import FrameValidity, LandmarkFrame
 from pipelines.video.extractor import derive_hand_signal
+from pipelines.video.motor_model import TemporalMotorEventModel, load_temporal_motor_model
+from services.api.app.core.config import Settings, get_settings
 from services.api.app.models.entities import (
     AssessmentSession,
     Event,
@@ -60,6 +64,24 @@ MEASURED_QUALITY_KEYS = (
 class MeasurementOutcome:
     assessment: QualityAssessment
     recording: Recording | None = None
+
+
+@lru_cache(maxsize=4)
+def _load_release_motor_model(path: Path) -> TemporalMotorEventModel:
+    return load_temporal_motor_model(path, require_release_gate=True)
+
+
+def configured_motor_event_model(
+    settings: Settings | None = None,
+) -> TemporalMotorEventModel | None:
+    settings = settings or get_settings()
+    if not settings.motor_event_model_enabled:
+        return None
+    if settings.motor_event_model_path is None:
+        raise RuntimeError(
+            "HANDVOICE_MOTOR_EVENT_MODEL_PATH is required when the motor model is enabled"
+        )
+    return _load_release_motor_model(settings.motor_event_model_path)
 
 
 def discard_unaccepted_media(db: Session, storage_key: str) -> bool:
@@ -105,6 +127,7 @@ def _feature(
     *,
     status: str = "accepted",
     metadata: dict | None = None,
+    algorithm_version: str = ALGORITHM_VERSION,
 ) -> Feature:
     return Feature(
         task_instance_id=task_id,
@@ -113,7 +136,7 @@ def _feature(
         value=value,
         unit=unit,
         status=status,
-        algorithm_version=ALGORITHM_VERSION,
+        algorithm_version=algorithm_version,
         metadata_json=metadata or {},
     )
 
@@ -242,6 +265,11 @@ def _process_claimed_measurement(
         voiced_intervals=voiced_intervals,
         ddk_event_ms=ddk_event_ms,
         coupling_window_ms=protocol["coupling"]["coincidence_window_ms"],
+        motor_event_model=(
+            configured_motor_event_model()
+            if task.task_code == "T01"
+            else None
+        ),
     )
 
     confounds = compute_capture_confounds(hand_samples) if frames else CaptureConfounds(None, None, None)
@@ -296,6 +324,11 @@ def _process_claimed_measurement(
         event_metadata = dict(event.metadata)
         if event.modality == Modality.SPEECH:
             event_metadata.update({"status": "exploratory_unvalidated", "validated": False})
+        event_algorithm_version = (
+            result.motor_detection.algorithm_version
+            if event.modality == Modality.MOTOR and result.motor_detection is not None
+            else ALGORITHM_VERSION
+        )
         db.add(
             Event(
                 task_instance_id=task.id,
@@ -305,26 +338,111 @@ def _process_claimed_measurement(
                 end_ms=event.end_ms,
                 confidence=event.confidence,
                 value_json=event_metadata,
-                algorithm_version=ALGORITHM_VERSION,
+                algorithm_version=event_algorithm_version,
             )
         )
 
     if result.motor_rhythm:
+        motor_metadata = (
+            {
+                "detector_kind": result.motor_detection.detector_kind,
+                "detector": dict(result.motor_detection.metadata),
+            }
+            if result.motor_detection is not None
+            else {}
+        )
+        motor_algorithm_version = (
+            result.motor_detection.algorithm_version
+            if result.motor_detection is not None
+            else ALGORITHM_VERSION
+        )
         db.add_all(
             [
-                _feature(task.id, Modality.MOTOR.value, "tap_rate_hz", result.motor_rhythm.rate_hz, "Hz"),
-                _feature(task.id, Modality.MOTOR.value, "tap_interval_cv", result.motor_rhythm.interval_cv, "proportion"),
-                _feature(task.id, Modality.MOTOR.value, "median_tap_amplitude", result.median_motor_amplitude, "normalized"),
-                _feature(task.id, Modality.MOTOR.value, "tap_event_count", float(result.motor_rhythm.event_count), "count"),
+                _feature(
+                    task.id,
+                    Modality.MOTOR.value,
+                    "tap_rate_hz",
+                    result.motor_rhythm.rate_hz,
+                    "Hz",
+                    metadata=motor_metadata,
+                    algorithm_version=motor_algorithm_version,
+                ),
+                _feature(
+                    task.id,
+                    Modality.MOTOR.value,
+                    "tap_interval_cv",
+                    result.motor_rhythm.interval_cv,
+                    "proportion",
+                    metadata=motor_metadata,
+                    algorithm_version=motor_algorithm_version,
+                ),
+                _feature(
+                    task.id,
+                    Modality.MOTOR.value,
+                    "median_tap_amplitude",
+                    result.median_motor_amplitude,
+                    "normalized",
+                    metadata=motor_metadata,
+                    algorithm_version=motor_algorithm_version,
+                ),
+                _feature(
+                    task.id,
+                    Modality.MOTOR.value,
+                    "tap_event_count",
+                    float(result.motor_rhythm.event_count),
+                    "count",
+                    metadata=motor_metadata,
+                    algorithm_version=motor_algorithm_version,
+                ),
             ]
         )
     if result.sequence_effect:
         sequence = result.sequence_effect
+        sequence_metadata = (
+            {
+                "detector_kind": result.motor_detection.detector_kind,
+                "detector": dict(result.motor_detection.metadata),
+            }
+            if result.motor_detection is not None
+            else {}
+        )
+        sequence_algorithm_version = (
+            result.motor_detection.algorithm_version
+            if result.motor_detection is not None
+            else ALGORITHM_VERSION
+        )
         db.add_all(
             [
-                _feature(task.id, Modality.MOTOR.value, "amplitude_decrement_slope", sequence.amplitude_decrement_slope, "per_tap", status="exploratory_unvalidated"),
-                _feature(task.id, Modality.MOTOR.value, "amplitude_decrement_ratio", sequence.amplitude_decrement_ratio, "proportion", status="exploratory_unvalidated"),
-                _feature(task.id, Modality.MOTOR.value, "speed_decrement_slope", sequence.speed_decrement_slope_ms, "ms_per_interval", status="exploratory_unvalidated"),
+                _feature(
+                    task.id,
+                    Modality.MOTOR.value,
+                    "amplitude_decrement_slope",
+                    sequence.amplitude_decrement_slope,
+                    "per_tap",
+                    status="exploratory_unvalidated",
+                    metadata=sequence_metadata,
+                    algorithm_version=sequence_algorithm_version,
+                ),
+                _feature(
+                    task.id,
+                    Modality.MOTOR.value,
+                    "amplitude_decrement_ratio",
+                    sequence.amplitude_decrement_ratio,
+                    "proportion",
+                    status="exploratory_unvalidated",
+                    metadata=sequence_metadata,
+                    algorithm_version=sequence_algorithm_version,
+                ),
+                _feature(
+                    task.id,
+                    Modality.MOTOR.value,
+                    "speed_decrement_slope",
+                    sequence.speed_decrement_slope_ms,
+                    "ms_per_interval",
+                    status="exploratory_unvalidated",
+                    metadata=sequence_metadata,
+                    algorithm_version=sequence_algorithm_version,
+                ),
                 _feature(
                     task.id,
                     Modality.MOTOR.value,
@@ -332,6 +450,8 @@ def _process_claimed_measurement(
                     None if sequence.halt_count is None else float(sequence.halt_count),
                     "count",
                     status="exploratory_unvalidated",
+                    metadata=sequence_metadata,
+                    algorithm_version=sequence_algorithm_version,
                 ),
             ]
         )

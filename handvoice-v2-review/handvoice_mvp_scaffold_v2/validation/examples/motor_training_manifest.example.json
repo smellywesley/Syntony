@@ -1,0 +1,76 @@
+{
+  "schema_version": "1.0",
+  "profile_version": "handvoice-motor-training-v1",
+  "claim_boundary": "motor_event_measurement_only",
+  "annotators_blinded_to_detector": true,
+  "consensus_adjudicated_without_detector": true,
+  "dataset": {
+    "id": "HUBU-FIS-pilot",
+    "doi": "10.5281/zenodo.17738775",
+    "license": "CC-BY-4.0",
+    "kind": "human_recordings",
+    "human_annotated": true
+  },
+  "cases": [
+    {
+      "case_id": "motor-001",
+      "participant_id": "participant-001",
+      "split": "train",
+      "task_code": "T01",
+      "hand": "right",
+      "landmark_file": "landmarks/motor-001.json",
+      "landmark_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "source_video_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "strata": {
+        "device": "source-device-a",
+        "condition": "clear",
+        "performance_band": "typical"
+      },
+      "rater_events_ms": {
+        "rater-a": [500, 1000, 1500],
+        "rater-b": [510, 990, 1510]
+      },
+      "consensus_events_ms": [505, 995, 1505]
+    },
+    {
+      "case_id": "motor-002",
+      "participant_id": "participant-002",
+      "split": "validation",
+      "task_code": "T01",
+      "hand": "right",
+      "landmark_file": "landmarks/motor-002.json",
+      "landmark_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "source_video_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "strata": {
+        "device": "source-device-a",
+        "condition": "clear",
+        "performance_band": "slow"
+      },
+      "rater_events_ms": {
+        "rater-a": [480, 960, 1440],
+        "rater-b": [490, 950, 1450]
+      },
+      "consensus_events_ms": [485, 955, 1445]
+    },
+    {
+      "case_id": "motor-003",
+      "participant_id": "participant-003",
+      "split": "test",
+      "task_code": "T01",
+      "hand": "right",
+      "landmark_file": "landmarks/motor-003.json",
+      "landmark_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "source_video_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "strata": {
+        "device": "source-device-b",
+        "condition": "degraded",
+        "performance_band": "fast"
+      },
+      "rater_events_ms": {
+        "rater-a": [520, 1040, 1560],
+        "rater-b": [530, 1030, 1570]
+      },
+      "consensus_events_ms": [525, 1035, 1565]
+    }
+  ]
+}

@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     demo_bypass_operator_auth: bool = False
     auto_create_schema: bool = True
     maximum_media_bytes: int = 64 * 1024 * 1024
+    # Disabled until a human-annotated artifact passes the frozen release gate.
+    # When enabled, the model supports T01 landmark tracking only; T03 retains
+    # the deterministic detector until dual-task training data exist.
+    motor_event_model_enabled: bool = False
+    motor_event_model_path: Path | None = None
 
 
 @lru_cache
