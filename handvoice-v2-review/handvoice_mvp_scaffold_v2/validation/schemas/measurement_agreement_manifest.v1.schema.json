@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://handvoice.local/schemas/measurement-agreement-manifest.v1.json",
+  "title": "HandVoice Measurement Agreement Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile_version",
+    "dataset_id",
+    "dataset_kind",
+    "claim_boundary",
+    "annotators_blinded_to_detector",
+    "consensus_adjudicated_without_detector",
+    "cases"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "profile_version": {"const": "handvoice-agreement-v1"},
+    "dataset_id": {"$ref": "#/$defs/safeId"},
+    "dataset_kind": {"enum": ["human_recordings", "synthetic_example"]},
+    "claim_boundary": {"const": "engineering_validation_only"},
+    "annotators_blinded_to_detector": {"const": true},
+    "consensus_adjudicated_without_detector": {"const": true},
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/case"}
+    }
+  },
+  "$defs": {
+    "safeId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "eventTimes": {
+      "type": "array",
+      "maxItems": 300,
+      "uniqueItems": true,
+      "items": {"type": "integer", "minimum": 0, "maximum": 10000}
+    },
+    "strata": {
+      "type": "object",
+      "minProperties": 2,
+      "maxProperties": 12,
+      "required": ["device", "condition", "performance_band"],
+      "propertyNames": {"pattern": "^[a-z][a-z0-9_]{0,31}$"},
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 60,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+      }
+    },
+    "raterEvents": {
+      "type": "object",
+      "minProperties": 2,
+      "maxProperties": 5,
+      "propertyNames": {"pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"},
+      "additionalProperties": {"$ref": "#/$defs/eventTimes"}
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "modality", "task_code", "usable", "strata"],
+      "properties": {
+        "case_id": {"$ref": "#/$defs/safeId"},
+        "modality": {"enum": ["motor", "speech"]},
+        "task_code": {"enum": ["T01", "T02", "T03"]},
+        "usable": {"type": "boolean"},
+        "exclusion_reason": {"type": "string", "minLength": 1, "maxLength": 120},
+        "strata": {"$ref": "#/$defs/strata"},
+        "rater_events_ms": {"$ref": "#/$defs/raterEvents"},
+        "consensus_events_ms": {"$ref": "#/$defs/eventTimes"},
+        "detected_events_ms": {"$ref": "#/$defs/eventTimes"}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"usable": {"const": true}},
+            "required": ["usable"]
+          },
+          "then": {
+            "required": [
+              "rater_events_ms",
+              "consensus_events_ms",
+              "detected_events_ms"
+            ],
+            "not": {"required": ["exclusion_reason"]}
+          },
+          "else": {
+            "required": ["exclusion_reason"],
+            "not": {
+              "anyOf": [
+                {"required": ["rater_events_ms"]},
+                {"required": ["consensus_events_ms"]},
+                {"required": ["detected_events_ms"]}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

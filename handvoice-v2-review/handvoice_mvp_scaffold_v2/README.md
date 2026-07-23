@@ -162,6 +162,29 @@ python scripts/run_synthetic_validation.py
 
 This tests known synthetic tap-event ground truth under frame-rate, jitter, noise, dropout, duplicate-timestamp and ordering perturbations. It validates software behavior only; see `docs/HandVoice_Conference_Validation_Plan_v1.md` for the claim boundary and human-evidence ladder.
 
+## Human-annotation agreement gate
+
+The next evidence rung is a frozen, machine-readable agreement analysis for
+blinded motor and speech annotations:
+
+```powershell
+python scripts/score_measurement_agreement.py `
+  validation/manifests/measurement_agreement.v1.json `
+  --output validation/results/measurement_agreement.json
+```
+
+The scorer enforces independent blinded raters, consensus adjudication without
+detector visibility, modality-specific one-to-one tolerances, inter-rater
+reliability, minimum sample sizes, detector precision/recall/F1/timing gates,
+and condition/device stratification. Thresholds are code-locked under
+`handvoice-agreement-v1`; result manifests cannot lower them.
+
+See `docs/HandVoice_Measurement_Agreement_Protocol_v1.md` and
+`validation/examples/measurement_agreement_manifest.example.json`. The example
+is synthetic and intentionally cannot pass the human-recording gate. Even a
+real-corpus pass supports event-detector agreement only, not clinical validity
+or diagnosis.
+
 ## Docker
 
 The Docker configuration is **local competition development only**. PostgreSQL is not published to the host, Redis and the nonfunctional worker have been removed, and the API binds to `127.0.0.1:8000`.
@@ -177,5 +200,6 @@ overwrite an existing valid `.env`.
 - `docs/architecture-decisions.md` — current ADRs
 
 - `docs/HandVoice_Conference_Validation_Plan_v1.md` - frozen non-clinical validation and claim boundary
+- `docs/HandVoice_Measurement_Agreement_Protocol_v1.md` - locked annotation and detector-agreement gates
 
 Earlier broad architecture documents are superseded for competition implementation.

@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "profile_version": "handvoice-agreement-v1",
+  "dataset_id": "EXAMPLE_SYNTHETIC_DO_NOT_CITE",
+  "dataset_kind": "synthetic_example",
+  "claim_boundary": "engineering_validation_only",
+  "annotators_blinded_to_detector": true,
+  "consensus_adjudicated_without_detector": true,
+  "cases": [
+    {
+      "case_id": "example-motor-001",
+      "modality": "motor",
+      "task_code": "T01",
+      "usable": true,
+      "strata": {
+        "device": "example_phone",
+        "condition": "clear",
+        "performance_band": "typical"
+      },
+      "rater_events_ms": {
+        "rater_a": [500, 1000, 1500, 2000],
+        "rater_b": [510, 990, 1510, 1990]
+      },
+      "consensus_events_ms": [505, 995, 1505, 1995],
+      "detected_events_ms": [510, 1000, 1500, 2000]
+    },
+    {
+      "case_id": "example-speech-001",
+      "modality": "speech",
+      "task_code": "T02",
+      "usable": true,
+      "strata": {
+        "device": "example_phone",
+        "condition": "quiet",
+        "performance_band": "typical"
+      },
+      "rater_events_ms": {
+        "rater_a": [300, 600, 900, 1200],
+        "rater_b": [305, 595, 905, 1195]
+      },
+      "consensus_events_ms": [303, 598, 903, 1198],
+      "detected_events_ms": [307, 602, 899, 1202]
+    }
+  ]
+}

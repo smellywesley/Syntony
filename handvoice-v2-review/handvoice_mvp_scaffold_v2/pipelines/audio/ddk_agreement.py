@@ -12,30 +12,11 @@ manual annotations exist.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from statistics import mean
-
-from pipelines.common.contracts import Modality, TimestampedEvent
-from pipelines.coupling.events import match_events_one_to_one
+from pipelines.common.contracts import Modality
+from pipelines.validation.agreement import EventAgreement, score_event_agreement
 
 
-@dataclass(frozen=True, slots=True)
-class OnsetAgreement:
-    reference_count: int
-    detected_count: int
-    matched_count: int
-    precision: float | None
-    recall: float | None
-    f1: float | None
-    timing_mae_ms: float | None
-    tolerance_ms: int
-
-
-def _as_events(times_ms: list[int], prefix: str) -> list[TimestampedEvent]:
-    return [
-        TimestampedEvent(event_id=f"{prefix}-{i}", modality=Modality.SPEECH, event_type="ddk_syllable_onset", start_ms=t)
-        for i, t in enumerate(sorted(times_ms))
-    ]
+OnsetAgreement = EventAgreement
 
 
 def score_onset_agreement(
@@ -50,31 +31,10 @@ def score_onset_agreement(
     single detected onset can validate at most one reference onset (no
     double-counting inflating recall).
     """
-    if tolerance_ms < 0:
-        raise ValueError("tolerance_ms must be non-negative")
-    reference = _as_events(reference_ms, "ref")
-    detected = _as_events(detected_ms, "det")
-    matches = match_events_one_to_one(reference, detected, window_ms=tolerance_ms)
-
-    matched = len(matches)
-    n_ref = len(reference)
-    n_det = len(detected)
-    precision = matched / n_det if n_det else None
-    recall = matched / n_ref if n_ref else None
-    f1 = (
-        2 * precision * recall / (precision + recall)
-        if precision and recall and (precision + recall) > 0
-        else (0.0 if (n_ref or n_det) else None)
-    )
-    timing_mae = mean(abs(match.lag_ms) for match in matches) if matches else None
-    return OnsetAgreement(
-        reference_count=n_ref,
-        detected_count=n_det,
-        matched_count=matched,
-        precision=precision,
-        recall=recall,
-        f1=f1,
-        timing_mae_ms=timing_mae,
+    return score_event_agreement(
+        reference_ms,
+        detected_ms,
+        modality=Modality.SPEECH,
         tolerance_ms=tolerance_ms,
     )
 
