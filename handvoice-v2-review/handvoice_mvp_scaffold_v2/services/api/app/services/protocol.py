@@ -26,6 +26,17 @@ def _validate_semantics(data: dict[str, Any]) -> None:
         raise ValueError("task definition codes must be unique")
     if len(names) != len(set(names)):
         raise ValueError("task definition names must be unique")
+    expected_tasks = {
+        "T01": {"condition": "single", "hand": "right", "speech_task": None},
+        "T02": {"condition": "single", "hand": None, "speech_task": "ddk_pataka"},
+        "T03": {"condition": "dual", "hand": "right", "speech_task": "ddk_pataka"},
+    }
+    if set(codes) != set(expected_tasks):
+        raise ValueError("protocol must define exactly T01, T02 and T03")
+    for task in definitions:
+        expected = expected_tasks[task["code"]]
+        if any(task[key] != value for key, value in expected.items()):
+            raise ValueError(f"task {task['code']} has an invalid modality definition")
 
     expected = Counter(codes)
     for name, sequence in data["sequences"].items():
@@ -37,6 +48,43 @@ def _validate_semantics(data: dict[str, Any]) -> None:
 
     if data["max_repetitions"] < data["initial_repetitions"]:
         raise ValueError("max_repetitions cannot be below initial_repetitions")
+
+    quality = data["quality_defaults"]
+    ordered_thresholds = [
+        (
+            quality["video"]["accept_valid_frame_fraction"],
+            quality["video"]["reject_valid_frame_fraction"],
+            "video valid-frame accept threshold must exceed reject threshold",
+        ),
+        (
+            quality["video"]["accept_median_fps"],
+            quality["video"]["reject_median_fps"],
+            "video frame-rate accept threshold must exceed reject threshold",
+        ),
+        (
+            quality["video"]["reject_wrong_hand_fraction"],
+            quality["video"]["accept_wrong_hand_fraction"],
+            "wrong-hand reject threshold must exceed accept threshold",
+        ),
+        (
+            quality["audio"]["accept_snr_db"],
+            quality["audio"]["reject_snr_db"],
+            "audio SNR accept threshold must exceed reject threshold",
+        ),
+        (
+            quality["audio"]["reject_clipping_fraction"],
+            quality["audio"]["accept_clipping_fraction"],
+            "audio clipping reject threshold must exceed accept threshold",
+        ),
+        (
+            quality["synchronization"]["reject_start_offset_ms"],
+            quality["synchronization"]["accept_start_offset_ms"],
+            "A/V offset reject threshold must exceed accept threshold",
+        ),
+    ]
+    for higher, lower, message in ordered_thresholds:
+        if higher <= lower:
+            raise ValueError(message)
 
 
 @lru_cache

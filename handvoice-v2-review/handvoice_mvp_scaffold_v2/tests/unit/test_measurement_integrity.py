@@ -80,7 +80,9 @@ def test_tap_detection_is_invariant_to_frame_order():
     assert detect_tap_events(list(reversed(samples))) == expected
 
 
-def test_probe_rejects_audio_video_start_skew(monkeypatch: pytest.MonkeyPatch):
+def test_probe_preserves_audio_video_start_skew_for_quality_decision(
+    monkeypatch: pytest.MonkeyPatch,
+):
     payload = {
         "format": {"duration": "15.0"},
         "streams": [
@@ -100,5 +102,5 @@ def test_probe_rejects_audio_video_start_skew(monkeypatch: pytest.MonkeyPatch):
     }
     completed = SimpleNamespace(stdout=json.dumps(payload))
     monkeypatch.setattr("services.api.app.services.media.subprocess.run", lambda *a, **k: completed)
-    with pytest.raises(ValueError, match="starts differ"):
-        probe_media(Path("capture.mp4"))
+    result = probe_media(Path("capture.mp4"))
+    assert abs(result.video_start_ms - result.audio_start_ms) == 250

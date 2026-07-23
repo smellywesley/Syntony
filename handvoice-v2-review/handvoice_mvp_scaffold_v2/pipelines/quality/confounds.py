@@ -4,8 +4,9 @@ Method anchor: monocular MediaPipe tapping amplitude scales with hand-to-camera
 distance, and landmark accuracy degrades with motion blur at low frame rates;
 validity work samples at 30/60/120 fps and treats sub-30 fps as a limitation
 (Sensors 2022, MDPI 22:7992; MediaPipe-vs-standard, PMC11683656). Finger tapping
-in Parkinson's reaches 3-6 Hz, so the ~15 fps effective capture rate is a real
-Nyquist ceiling worth recording alongside every measurement.
+in Parkinson's reaches 3-6 Hz, so achieved frame rate remains a measurement
+constraint worth recording alongside every capture. The browser now targets
+about 33 fps; 15 fps is retained only as a synthetic degradation scenario.
 
 NOTE: a rest-tremor proxy is intentionally NOT computed here. The frozen
 protocol captures landmarks only inside the active task window, so there is no

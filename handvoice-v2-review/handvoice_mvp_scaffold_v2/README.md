@@ -2,7 +2,7 @@
 
 A deliberately narrow, executable scaffold for testing one measurement hypothesis:
 
-> Can synchronized right-hand tapping and `/pa-ta-ka/` reveal measurable, bidirectional dual-task interference beyond either task alone?
+> Can synchronized right-hand tapping and `/pa-ta-ka/` produce measurable, bidirectional within-session contrasts under simultaneous task loading?
 
 ## Frozen scope
 
@@ -61,6 +61,8 @@ POST /v1/task-instances/{id}/measure
 GET  /v1/sessions/{id}/report
 GET  /v1/sessions/{id}/visualization
 POST /v1/task-instances/{id}/repeat   # optional after acceptance
+POST /v1/participants/{id}/withdraw   # remove sessions/media; retain withdrawn marker
+DELETE /v1/participants/{id}?confirm=true  # hard-delete participant, sessions, and media
 ```
 
 All `/v1` endpoints require an operator key, validated against the `operators`
@@ -71,10 +73,42 @@ Authorization: Bearer <operator key>
 ```
 
 The legacy `X-HandVoice-API-Key: <operator key>` header is still accepted for
-backward compatibility. The capture app stores the operator key once per device
-so participants never enter a credential.
+backward compatibility. The capture app keeps the operator key in memory only
+for the active browser session and clears it when the operator ends the session,
+so participants never enter a credential and shared devices do not retain it.
 
-## Quick start
+## Recommended competition demo
+
+The Docker-first launcher builds the capture app, bundles FFmpeg, generates
+local secrets, waits for the API, checks `/health` and `/capture/`, and can
+reveal the operator key in a private terminal:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start_demo.ps1 -RevealKey
+```
+
+Docker Desktop is the only host prerequisite. Use synthetic/demo identifiers
+only; do not enter real health or personal data. The first build may take
+several minutes. A prepared machine normally starts in under two minutes.
+Omit `-RevealKey` when the terminal is being shared or recorded.
+
+If Docker Desktop is unavailable, start the same capture interface against a
+native SQLite API:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start_demo_native.ps1
+```
+
+The native demo goes directly to coded participant setup; no operator key is
+entered in the browser. Stop it with `.\scripts\stop_demo_native.ps1`. The
+native route requires the Python dependencies and Node.js; FFmpeg/ffprobe are
+additionally required for recorded-media validation and the final report.
+
+The stack binds to loopback HTTP for a same-computer demonstration. Do not
+change it to a LAN-wide binding for phone testing: bearer keys and recordings
+require HTTPS or a trusted secure-device forwarding path.
+
+## Native developer setup
 
 **Prerequisites:** Python 3.11+ and FFmpeg. `ffprobe`/`ffmpeg` must be on `PATH` — media validation, audio extraction, and 4 integration tests hard-require them (`winget install Gyan.FFmpeg` on Windows, `apt install ffmpeg` on Debian/Ubuntu).
 
@@ -85,6 +119,10 @@ Set-ExecutionPolicy -Scope Process Bypass
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -e ".[dev]"
+Push-Location .\apps\capture-web
+npm ci
+npm run build
+Pop-Location
 $env:HANDVOICE_BOOTSTRAP_KEY = python -c "import secrets; print(secrets.token_urlsafe(32))"
 pytest
 uvicorn services.api.app.main:app --reload
@@ -94,17 +132,27 @@ uvicorn services.api.app.main:app --reload
 deployment is reachable; the API always fails closed without a valid operator
 key, and the server refuses to seed a known placeholder value. Provision
 additional operators (per site/clinician) as their own rows, each independently
-revocable.
+revocable. Study-scoped operators are enforced at participant, session, task,
+report, and upload boundaries; a scoped key cannot access another study.
+
+Apply versioned database migrations before starting a non-demo API:
+
+```powershell
+alembic upgrade head
+```
+
+Docker performs this migration automatically. `HANDVOICE_AUTO_CREATE_SCHEMA`
+remains a local-demo convenience and is disabled in the Docker API.
 
 Open `http://127.0.0.1:8000/capture/` for the capture interface or `http://127.0.0.1:8000/docs` for the API.
 
-## Verified status
+## Verified baseline
 
 ```text
-73 passed
+Python and browser tests pass; the capture-web production build succeeds.
 ```
 
-The test suite includes adversarial regression tests for the greedy coupling failure, overlapping VAD intervals, duplicate protocol codes, malformed hand landmarks, A/V start skew, active-window drift, storage-path escape, bounded upload, operator-key authorization (unknown key rejected, legacy header still works), placeholder-bootstrap-key seeding refusal, synchronous measurement, DTC, visualization, conditional repeat creation, duplicate-recording rejection, test-retest reliability (ICC/SEM/MDC), tapping sequence-effect features, DDK onset agreement, DDK temporal fine structure (rate variance, dwell time, rate-decrement slope), capture confounds, acoustic voice features (F0/jitter/shimmer/HNR against synthetic tones), and the synthetic validation harness.
+The test suite includes adversarial regression tests for the greedy coupling failure, overlapping VAD intervals, duplicate protocol codes, malformed hand landmarks, A/V start skew, active-window drift, storage-path escape, bounded and operator-owned uploads, cross-study authorization, withdrawal/deletion of database and media records, loopback-only demo authentication, placeholder-bootstrap-key seeding refusal, synchronous measurement, DTC, visualization, conditional repeat creation, duplicate-recording rejection, within-session repeatability (ICC/SEM/MDC), tapping sequence-effect features, DDK onset agreement, DDK temporal fine structure (rate variance, dwell time, rate-decrement slope), capture confounds, acoustic voice features (F0/jitter/shimmer/HNR against synthetic tones), and the synthetic validation harness.
 
 ## Engineering validation
 
@@ -118,12 +166,8 @@ This tests known synthetic tap-event ground truth under frame-rate, jitter, nois
 
 The Docker configuration is **local competition development only**. PostgreSQL is not published to the host, Redis and the nonfunctional worker have been removed, and the API binds to `127.0.0.1:8000`.
 
-```powershell
-Copy-Item .env.example .env
-# Edit .env: HANDVOICE_BOOTSTRAP_KEY must be replaced with a unique secret.
-# It seeds the first operator; a placeholder value is refused.
-docker compose up --build
-```
+Use `scripts/start_demo.ps1`. It refuses placeholder secrets and does not
+overwrite an existing valid `.env`.
 
 ## Canonical documentation
 

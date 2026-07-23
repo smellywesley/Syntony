@@ -7,7 +7,7 @@ sequenceDiagram
     participant Media as Local Controlled Media Root
     participant DB as PostgreSQL
 
-    App->>API: POST /v1/participants + API key
+    App->>API: POST /v1/participants + operator bearer key
     API->>DB: Create pseudonymous participant
     App->>API: POST /v1/sessions
     API->>DB: Lock participant and allocate unique session number
@@ -19,9 +19,14 @@ sequenceDiagram
     App->>API: POST /task-instances/{id}/measure
     API->>Media: Resolve contained storage key
     API->>Media: Verify SHA-256 and ffprobe A/V tracks
-    API->>API: Derive hand/audio events and features
-    API->>DB: Persist recording, events and features
-    API-->>App: analyzed_synchronously
+    API->>API: Derive events, features and deterministic QC
+    alt Quality accepted
+        API->>DB: Persist recording, events and features
+        API-->>App: accepted + quality metrics
+    else Retry or review needed
+        API->>Media: Delete rejected upload safely
+        API-->>App: Structured reason codes; task remains pending
+    end
     App->>API: GET /sessions/{id}/report
     API-->>App: Hand DTC, speech DTC and exploratory coupling
     App->>API: GET /sessions/{id}/visualization
@@ -34,4 +39,7 @@ sequenceDiagram
 
 ## Security boundary
 
-The validation prototype uses one configured API key, bounded uploads, generated storage keys and a contained local media root. It is not a multi-tenant production authorization model.
+Every `/v1` route requires a hashed, revocable operator/site key. The participant
+never enters a credential. Bounded uploads, generated storage keys and a
+contained local media root protect the competition demo, but this remains a
+local engineering prototype rather than clinical production authorization.

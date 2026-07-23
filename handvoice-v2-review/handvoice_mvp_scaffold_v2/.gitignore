@@ -9,3 +9,10 @@ node_modules/
 dist/
 build/
 .DS_Store
+/local_media/
+/.local_storage/
+/.test_storage/
+/.native_demo/
+**/incoming/
+**/processing/
+*.partial

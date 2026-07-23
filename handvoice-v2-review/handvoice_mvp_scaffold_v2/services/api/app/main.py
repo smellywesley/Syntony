@@ -25,14 +25,25 @@ KNOWN_DEFAULT_KEYS = frozenset(
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     settings = get_settings()
+    if settings.demo_bypass_operator_auth and settings.environment != "native-demo":
+        raise RuntimeError(
+            "HANDVOICE_DEMO_BYPASS_OPERATOR_AUTH is allowed only when "
+            "HANDVOICE_ENVIRONMENT=native-demo"
+        )
     if settings.auto_create_schema:
         Base.metadata.create_all(bind=engine)
+    settings.storage_root.resolve().mkdir(parents=True, exist_ok=True)
     bootstrap = settings.bootstrap_key
     if bootstrap:
         if bootstrap in KNOWN_DEFAULT_KEYS:
             raise RuntimeError(
                 "HANDVOICE_BOOTSTRAP_KEY is a known placeholder value; set a unique "
                 'secret (e.g. python -c "import secrets; print(secrets.token_urlsafe(32))")'
+            )
+        if len(bootstrap.encode("utf-8")) < 32:
+            raise RuntimeError(
+                "HANDVOICE_BOOTSTRAP_KEY must contain at least 32 bytes; generate "
+                'one with python -c "import secrets; print(secrets.token_urlsafe(32))"'
             )
         with SessionLocal() as db:
             seed_bootstrap_operator(db, bootstrap)

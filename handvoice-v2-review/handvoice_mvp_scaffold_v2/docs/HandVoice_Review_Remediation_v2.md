@@ -66,9 +66,8 @@ Earlier broad system documents are superseded for competition implementation.
 
 ## Verification
 
-```text
-22 passed
-```
+The authoritative verification result is the current full test run; this historical
+document no longer freezes a test count.
 
 The test suite covers the specific review failures, API authorization, media-path containment, synchronous analysis, report generation, DTC, visualization and conditional repeats.
 

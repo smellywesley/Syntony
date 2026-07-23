@@ -10,6 +10,7 @@ from services.api.app.models.entities import Operator
 from services.api.app.services.operators import (
     create_operator,
     hash_key,
+    resolve_demo_operator,
     resolve_operator,
     seed_bootstrap_operator,
 )
@@ -57,3 +58,13 @@ def test_resolve_operator_active_unknown_and_revoked():
         operator.active = False
         db.commit()
         assert resolve_operator(db, "site-a-key") is None
+
+
+def test_resolve_demo_operator_only_returns_active_bootstrap_operator():
+    with _fresh_db() as db:
+        create_operator(db, label="site-a", raw_key="site-a-key")
+        bootstrap = create_operator(db, label="bootstrap", raw_key="demo-key")
+        assert resolve_demo_operator(db).id == bootstrap.id
+        bootstrap.active = False
+        db.commit()
+        assert resolve_demo_operator(db) is None

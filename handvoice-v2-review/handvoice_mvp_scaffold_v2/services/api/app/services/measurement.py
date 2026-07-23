@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -10,7 +12,13 @@ from pipelines.audio.media import decode_audio_segment, extract_energy_events
 from pipelines.common.contracts import Modality
 from pipelines.dual_task.cost import Orientation, calculate_dual_task_cost, robust_condition_estimate
 from pipelines.measurement.core import analyze_measurement
-from pipelines.quality.confounds import compute_capture_confounds
+from pipelines.quality.confounds import CaptureConfounds, compute_capture_confounds
+from pipelines.quality.decision import (
+    QualityAssessment,
+    QualityDecision,
+    assess_capture_quality,
+    compute_audio_quality,
+)
 from pipelines.video.contracts import FrameValidity, LandmarkFrame
 from pipelines.video.extractor import derive_hand_signal
 from services.api.app.models.entities import (
@@ -23,11 +31,69 @@ from services.api.app.models.entities import (
     TaskStatus,
 )
 from services.api.app.schemas.api import MeasurementSubmission
-from services.api.app.services.media import validate_uploaded_media
+from services.api.app.services.media import (
+    MediaCleanupError,
+    claim_uploaded_media,
+    discard_pending_upload,
+    discard_uploaded_media,
+    resolve_storage_key,
+    validate_uploaded_media,
+)
 from services.api.app.services.protocol import load_protocol
 
 ALGORITHM_VERSION = "mvp-sync-0.2.0"
 AUDIO_SAMPLE_RATE = 16000
+MEASURED_QUALITY_KEYS = (
+    "median_fps",
+    "valid_frame_fraction",
+    "out_of_guide_frame_fraction",
+    "wrong_hand_frame_fraction",
+    "audio_snr_db",
+    "audio_clipping_fraction",
+    "av_start_offset_ms",
+    "motor_event_count",
+    "ddk_event_count",
+)
+
+
+@dataclass(frozen=True, slots=True)
+class MeasurementOutcome:
+    assessment: QualityAssessment
+    recording: Recording | None = None
+
+
+def discard_unaccepted_media(db: Session, storage_key: str) -> bool:
+    """Discard an upload only when no accepted recording references it."""
+    path = resolve_storage_key(storage_key)
+    referenced = db.scalar(
+        select(Recording.id).where(Recording.object_uri == f"file://{path}")
+    )
+    return False if referenced is not None else discard_uploaded_media(storage_key)
+
+
+def _accepted_assessment(db: Session, task_id: UUID) -> QualityAssessment:
+    rows = db.execute(
+        select(Feature.feature_name, Feature.value).where(
+            Feature.task_instance_id == task_id,
+            Feature.feature_name.in_(tuple(f"qc_{key}" for key in MEASURED_QUALITY_KEYS)),
+        )
+    ).all()
+    measured = {key: None for key in MEASURED_QUALITY_KEYS}
+    for feature_name, value in rows:
+        measured[feature_name.removeprefix("qc_")] = value
+    # Recordings accepted before the contract correctly return unknown values
+    # rather than substituting nominal container metadata for measured QC.
+    return QualityAssessment(QualityDecision.ACCEPT, (), measured, "quality.accepted")
+
+
+def _discard_claimed_after_failure(db: Session, storage_key: str, cause: Exception | None = None) -> None:
+    db.rollback()
+    try:
+        discard_unaccepted_media(db, storage_key)
+    except MediaCleanupError as cleanup_error:
+        if cause is not None:
+            raise cleanup_error from cause
+        raise
 
 
 def _feature(
@@ -68,22 +134,61 @@ def _validate_task_payload(task: TaskInstance, payload: MeasurementSubmission) -
             raise ValueError("dual task requires landmark frames")
     else:
         raise ValueError("unsupported task code")
-    if task.hand == "right" and any(frame.handedness != "right" for frame in payload.landmark_frames):
-        raise ValueError("right-hand task contains non-right landmark frames")
 
 
 def submit_measurement(
     db: Session,
     task: TaskInstance,
     payload: MeasurementSubmission,
-) -> Recording:
+) -> MeasurementOutcome:
+    protocol = load_protocol()
     if task.status == TaskStatus.COMPLETE.value:
         existing = db.scalar(select(Recording).where(Recording.task_instance_id == task.id))
         if existing and existing.sha256 == payload.sha256.lower():
-            return existing
+            discard_pending_upload(
+                payload.storage_key,
+                expected_sha256=payload.sha256,
+            )
+            return MeasurementOutcome(_accepted_assessment(db, task.id), existing)
+        discard_pending_upload(payload.storage_key)
         raise ValueError("task already has an accepted recording; create a repeat task instead")
     if db.scalar(select(func.count(Recording.id)).where(Recording.task_instance_id == task.id)):
+        discard_pending_upload(payload.storage_key)
         raise ValueError("task already has a registered recording")
+
+    claimed = claim_uploaded_media(payload.storage_key)
+    claimed_payload = payload.model_copy(update={"storage_key": claimed.storage_key})
+    try:
+        outcome = _process_claimed_measurement(db, task, claimed_payload, protocol)
+    except Exception as exc:
+        _discard_claimed_after_failure(db, claimed.storage_key, exc)
+        raise
+    if outcome.recording is None:
+        _discard_claimed_after_failure(db, claimed.storage_key)
+    return outcome
+
+
+def _process_claimed_measurement(
+    db: Session,
+    task: TaskInstance,
+    payload: MeasurementSubmission,
+    protocol: dict[str, Any],
+) -> MeasurementOutcome:
+    if payload.capture_interrupted:
+        assessment = assess_capture_quality(
+            protocol=protocol,
+            requires_hand=task.task_code in {"T01", "T03"},
+            requires_speech=task.task_code in {"T02", "T03"},
+            median_fps=None,
+            valid_frame_fraction=None,
+            out_of_guide_frame_fraction=None,
+            audio=None,
+            av_start_offset_ms=None,
+            motor_event_count=0,
+            ddk_event_count=0,
+            capture_interrupted=True,
+        )
+        return MeasurementOutcome(assessment)
 
     _validate_task_payload(task, payload)
     media = validate_uploaded_media(
@@ -102,10 +207,11 @@ def submit_measurement(
         for frame in payload.landmark_frames
     ]
     hand_samples = derive_hand_signal(frames)
-    protocol = load_protocol()
     voiced_intervals = [(interval.start_ms, interval.end_ms) for interval in payload.voiced_intervals]
     ddk_event_ms = list(payload.ddk_event_ms)
     acoustic = None
+    audio_quality = None
+    audio_decode_failed = False
     if task.task_code in {"T02", "T03"}:
         # Decode the active window once and reuse it for the energy-event
         # baseline (only when the client did not supply annotations) and for the
@@ -119,7 +225,9 @@ def submit_measurement(
             )
         except (ValueError, RuntimeError):
             samples = None
+            audio_decode_failed = True
         if samples is not None:
+            audio_quality = compute_audio_quality(samples)
             if not voiced_intervals or not ddk_event_ms:
                 audio_events = extract_energy_events(samples, sample_rate=AUDIO_SAMPLE_RATE)
                 if not voiced_intervals:
@@ -136,14 +244,42 @@ def submit_measurement(
         coupling_window_ms=protocol["coupling"]["coincidence_window_ms"],
     )
 
-    if task.task_code in {"T01", "T03"} and (
-        result.motor_rhythm is None or result.motor_rhythm.event_count < 3
-    ):
-        raise ValueError("insufficient valid tapping events")
-    if task.task_code in {"T02", "T03"} and (
-        result.speech_rhythm is None or result.speech_rhythm.event_count < 5
-    ):
-        raise ValueError("insufficient valid DDK events")
+    confounds = compute_capture_confounds(hand_samples) if frames else CaptureConfounds(None, None, None)
+    handedness_frames = [
+        frame
+        for frame in payload.landmark_frames
+        if frame.median_confidence >= 0.5 and frame.validity != FrameValidity.MISSING_HAND.value
+    ]
+    wrong_hand_frame_fraction = (
+        sum(frame.handedness != "right" for frame in handedness_frames) / len(handedness_frames)
+        if handedness_frames
+        else None
+    )
+    achieved_fps = confounds.achieved_frame_rate_hz
+    if achieved_fps is not None:
+        achieved_fps = min(achieved_fps, media.video_fps)
+    assessment = assess_capture_quality(
+        protocol=protocol,
+        requires_hand=task.task_code in {"T01", "T03"},
+        requires_speech=task.task_code in {"T02", "T03"},
+        median_fps=achieved_fps,
+        valid_frame_fraction=confounds.valid_frame_fraction,
+        out_of_guide_frame_fraction=(
+            sum(frame.validity == FrameValidity.OUT_OF_GUIDE for frame in frames) / len(frames)
+            if frames
+            else None
+        ),
+        audio=audio_quality,
+        av_start_offset_ms=float(abs(media.video_start_ms - media.audio_start_ms)),
+        motor_event_count=0 if result.motor_rhythm is None else result.motor_rhythm.event_count,
+        ddk_event_count=0 if result.speech_rhythm is None else result.speech_rhythm.event_count,
+        audio_decode_failed=audio_decode_failed,
+        wrong_hand_frame_fraction=(
+            wrong_hand_frame_fraction if task.hand == "right" else None
+        ),
+    )
+    if assessment.decision != QualityDecision.ACCEPT:
+        return MeasurementOutcome(assessment)
 
     recording = Recording(
         task_instance_id=task.id,
@@ -157,6 +293,9 @@ def submit_measurement(
     db.flush()
 
     for event in (*result.motor_events, *result.speech_events):
+        event_metadata = dict(event.metadata)
+        if event.modality == Modality.SPEECH:
+            event_metadata.update({"status": "exploratory_unvalidated", "validated": False})
         db.add(
             Event(
                 task_instance_id=task.id,
@@ -165,7 +304,7 @@ def submit_measurement(
                 start_ms=event.start_ms,
                 end_ms=event.end_ms,
                 confidence=event.confidence,
-                value_json=event.metadata,
+                value_json=event_metadata,
                 algorithm_version=ALGORITHM_VERSION,
             )
         )
@@ -183,20 +322,20 @@ def submit_measurement(
         sequence = result.sequence_effect
         db.add_all(
             [
-                _feature(task.id, Modality.MOTOR.value, "amplitude_decrement_slope", sequence.amplitude_decrement_slope, "per_tap"),
-                _feature(task.id, Modality.MOTOR.value, "amplitude_decrement_ratio", sequence.amplitude_decrement_ratio, "proportion"),
-                _feature(task.id, Modality.MOTOR.value, "speed_decrement_slope", sequence.speed_decrement_slope_ms, "ms_per_interval"),
+                _feature(task.id, Modality.MOTOR.value, "amplitude_decrement_slope", sequence.amplitude_decrement_slope, "per_tap", status="exploratory_unvalidated"),
+                _feature(task.id, Modality.MOTOR.value, "amplitude_decrement_ratio", sequence.amplitude_decrement_ratio, "proportion", status="exploratory_unvalidated"),
+                _feature(task.id, Modality.MOTOR.value, "speed_decrement_slope", sequence.speed_decrement_slope_ms, "ms_per_interval", status="exploratory_unvalidated"),
                 _feature(
                     task.id,
                     Modality.MOTOR.value,
                     "halt_count",
                     None if sequence.halt_count is None else float(sequence.halt_count),
                     "count",
+                    status="exploratory_unvalidated",
                 ),
             ]
         )
     if frames:
-        confounds = compute_capture_confounds(hand_samples)
         db.add_all(
             [
                 _feature(task.id, Modality.QUALITY.value, "achieved_frame_rate_hz", confounds.achieved_frame_rate_hz, "Hz", status="confound"),
@@ -204,31 +343,56 @@ def submit_measurement(
                 _feature(task.id, Modality.QUALITY.value, "median_palm_scale", confounds.median_palm_scale, "normalized", status="confound"),
             ]
         )
+    quality_units = {
+        "median_fps": "Hz",
+        "valid_frame_fraction": "proportion",
+        "out_of_guide_frame_fraction": "proportion",
+        "wrong_hand_frame_fraction": "proportion",
+        "audio_snr_db": "dB",
+        "audio_clipping_fraction": "proportion",
+        "av_start_offset_ms": "ms",
+        "motor_event_count": "count",
+        "ddk_event_count": "count",
+    }
+    db.add_all(
+        [
+            _feature(
+                task.id,
+                Modality.QUALITY.value,
+                f"qc_{key}",
+                assessment.measured_quality[key],
+                quality_units[key],
+                status="quality_contract",
+                metadata={"contract_version": "1"},
+            )
+            for key in MEASURED_QUALITY_KEYS
+        ]
+    )
     if result.speech_rhythm:
         db.add_all(
             [
-                _feature(task.id, Modality.SPEECH.value, "ddk_rate_hz", result.speech_rhythm.rate_hz, "Hz"),
-                _feature(task.id, Modality.SPEECH.value, "ddk_interval_cv", result.speech_rhythm.interval_cv, "proportion"),
-                _feature(task.id, Modality.SPEECH.value, "ddk_event_count", float(result.speech_rhythm.event_count), "count"),
+                _feature(task.id, Modality.SPEECH.value, "ddk_rate_hz", result.speech_rhythm.rate_hz, "Hz", status="exploratory_unvalidated"),
+                _feature(task.id, Modality.SPEECH.value, "ddk_interval_cv", result.speech_rhythm.interval_cv, "proportion", status="exploratory_unvalidated"),
+                _feature(task.id, Modality.SPEECH.value, "ddk_event_count", float(result.speech_rhythm.event_count), "count", status="exploratory_unvalidated"),
             ]
         )
     if result.ddk_dynamics:
         dynamics = result.ddk_dynamics
         db.add_all(
             [
-                _feature(task.id, Modality.SPEECH.value, "ddk_ioi_mean_ms", dynamics.inter_onset_interval_mean_ms, "ms"),
-                _feature(task.id, Modality.SPEECH.value, "ddk_ioi_sd_ms", dynamics.inter_onset_interval_sd_ms, "ms"),
-                _feature(task.id, Modality.SPEECH.value, "ddk_rate_variance_hz2", dynamics.instantaneous_rate_variance_hz2, "Hz2"),
-                _feature(task.id, Modality.SPEECH.value, "ddk_dwell_time_mean_ms", dynamics.dwell_time_mean_ms, "ms"),
-                _feature(task.id, Modality.SPEECH.value, "ddk_dwell_time_sd_ms", dynamics.dwell_time_sd_ms, "ms"),
-                _feature(task.id, Modality.SPEECH.value, "ddk_rate_decrement_slope", dynamics.rate_decrement_slope_hz_per_syllable, "hz_per_syllable"),
+                _feature(task.id, Modality.SPEECH.value, "ddk_ioi_mean_ms", dynamics.inter_onset_interval_mean_ms, "ms", status="exploratory_unvalidated"),
+                _feature(task.id, Modality.SPEECH.value, "ddk_ioi_sd_ms", dynamics.inter_onset_interval_sd_ms, "ms", status="exploratory_unvalidated"),
+                _feature(task.id, Modality.SPEECH.value, "ddk_rate_variance_hz2", dynamics.instantaneous_rate_variance_hz2, "Hz2", status="exploratory_unvalidated"),
+                _feature(task.id, Modality.SPEECH.value, "ddk_dwell_time_mean_ms", dynamics.dwell_time_mean_ms, "ms", status="exploratory_unvalidated"),
+                _feature(task.id, Modality.SPEECH.value, "ddk_dwell_time_sd_ms", dynamics.dwell_time_sd_ms, "ms", status="exploratory_unvalidated"),
+                _feature(task.id, Modality.SPEECH.value, "ddk_rate_decrement_slope", dynamics.rate_decrement_slope_hz_per_syllable, "hz_per_syllable", status="exploratory_unvalidated"),
             ]
         )
     if result.speech_timing:
         db.add_all(
             [
-                _feature(task.id, Modality.SPEECH.value, "voiced_duration_ms", float(result.speech_timing.voiced_duration_ms), "ms"),
-                _feature(task.id, Modality.SPEECH.value, "pause_percentage", result.speech_timing.pause_percentage, "percent"),
+                _feature(task.id, Modality.SPEECH.value, "voiced_duration_ms", float(result.speech_timing.voiced_duration_ms), "ms", status="exploratory_unvalidated"),
+                _feature(task.id, Modality.SPEECH.value, "pause_percentage", result.speech_timing.pause_percentage, "percent", status="exploratory_unvalidated"),
             ]
         )
     if acoustic and acoustic.voiced_frame_count > 0:
@@ -237,12 +401,12 @@ def submit_measurement(
         acoustic_meta = {"method": "autocorrelation_baseline", "validated": False}
         db.add_all(
             [
-                _feature(task.id, Modality.SPEECH.value, "mean_f0_hz", acoustic.mean_f0_hz, "Hz", metadata=acoustic_meta),
-                _feature(task.id, Modality.SPEECH.value, "f0_std_hz", acoustic.f0_std_hz, "Hz", metadata=acoustic_meta),
-                _feature(task.id, Modality.SPEECH.value, "f0_range_hz", acoustic.f0_range_hz, "Hz", metadata=acoustic_meta),
-                _feature(task.id, Modality.SPEECH.value, "jitter_local_percent", acoustic.jitter_local_percent, "percent", metadata=acoustic_meta),
-                _feature(task.id, Modality.SPEECH.value, "shimmer_local_percent", acoustic.shimmer_local_percent, "percent", metadata=acoustic_meta),
-                _feature(task.id, Modality.SPEECH.value, "mean_hnr_db", acoustic.mean_hnr_db, "dB", metadata=acoustic_meta),
+                _feature(task.id, Modality.SPEECH.value, "mean_f0_hz", acoustic.mean_f0_hz, "Hz", status="exploratory_unvalidated", metadata=acoustic_meta),
+                _feature(task.id, Modality.SPEECH.value, "f0_std_hz", acoustic.f0_std_hz, "Hz", status="exploratory_unvalidated", metadata=acoustic_meta),
+                _feature(task.id, Modality.SPEECH.value, "f0_range_hz", acoustic.f0_range_hz, "Hz", status="exploratory_unvalidated", metadata=acoustic_meta),
+                _feature(task.id, Modality.SPEECH.value, "jitter_local_percent", acoustic.jitter_local_percent, "percent", status="exploratory_unvalidated", metadata=acoustic_meta),
+                _feature(task.id, Modality.SPEECH.value, "shimmer_local_percent", acoustic.shimmer_local_percent, "percent", status="exploratory_unvalidated", metadata=acoustic_meta),
+                _feature(task.id, Modality.SPEECH.value, "mean_hnr_db", acoustic.mean_hnr_db, "dB", status="exploratory_unvalidated", metadata=acoustic_meta),
                 _feature(task.id, Modality.QUALITY.value, "voiced_fraction", acoustic.voiced_fraction, "proportion", status="confound"),
             ]
         )
@@ -289,7 +453,7 @@ def submit_measurement(
         )
     db.commit()
     db.refresh(recording)
-    return recording
+    return MeasurementOutcome(assessment, recording)
 
 
 def schedule_repeat(db: Session, task: TaskInstance) -> TaskInstance:

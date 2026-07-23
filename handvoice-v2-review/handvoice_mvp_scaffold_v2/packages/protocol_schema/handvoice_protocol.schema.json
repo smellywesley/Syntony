@@ -11,8 +11,11 @@
     "initial_repetitions",
     "max_repetitions",
     "repeat_policy",
+    "equal_priority_instruction_required",
     "task_definitions",
-    "sequences"
+    "sequences",
+    "quality_defaults",
+    "coupling"
   ],
   "properties": {
     "schema_version": {"type": "string"},
@@ -31,7 +34,7 @@
     "initial_repetitions": {"type": "integer", "const": 1},
     "max_repetitions": {"type": "integer", "minimum": 1, "maximum": 2},
     "repeat_policy": {"const": "accepted_first_capture_only"},
-    "equal_priority_instruction_required": {"type": "boolean"},
+    "equal_priority_instruction_required": {"const": true},
     "task_definitions": {
       "type": "array",
       "minItems": 3,
@@ -40,7 +43,7 @@
         "type": "object",
         "required": ["code", "name", "condition", "hand", "speech_task"],
         "properties": {
-          "code": {"type": "string", "pattern": "^T[0-9]{2}$"},
+          "code": {"enum": ["T01", "T02", "T03"]},
           "name": {"type": "string", "minLength": 1},
           "condition": {"enum": ["single", "dual"]},
           "hand": {"type": ["string", "null"], "enum": ["left", "right", null]},
@@ -59,8 +62,68 @@
         "items": {"type": "string", "pattern": "^T[0-9]{2}$"}
       }
     },
-    "quality_defaults": {"type": "object"},
-    "coupling": {"type": "object"}
+    "quality_defaults": {
+      "type": "object",
+      "required": ["video", "audio", "synchronization"],
+      "properties": {
+        "video": {
+          "type": "object",
+          "required": [
+            "accept_valid_frame_fraction",
+            "reject_valid_frame_fraction",
+            "accept_median_fps",
+            "reject_median_fps",
+            "accept_wrong_hand_fraction",
+            "reject_wrong_hand_fraction"
+          ],
+          "properties": {
+            "accept_valid_frame_fraction": {"type": "number", "minimum": 0, "maximum": 1},
+            "reject_valid_frame_fraction": {"type": "number", "minimum": 0, "maximum": 1},
+            "accept_median_fps": {"type": "number", "exclusiveMinimum": 0, "maximum": 240},
+            "reject_median_fps": {"type": "number", "exclusiveMinimum": 0, "maximum": 240},
+            "accept_wrong_hand_fraction": {"type": "number", "minimum": 0, "maximum": 1},
+            "reject_wrong_hand_fraction": {"type": "number", "minimum": 0, "maximum": 1}
+          },
+          "additionalProperties": false
+        },
+        "audio": {
+          "type": "object",
+          "required": [
+            "accept_snr_db",
+            "reject_snr_db",
+            "accept_clipping_fraction",
+            "reject_clipping_fraction"
+          ],
+          "properties": {
+            "accept_snr_db": {"type": "number", "minimum": -100, "maximum": 100},
+            "reject_snr_db": {"type": "number", "minimum": -100, "maximum": 100},
+            "accept_clipping_fraction": {"type": "number", "minimum": 0, "maximum": 1},
+            "reject_clipping_fraction": {"type": "number", "minimum": 0, "maximum": 1}
+          },
+          "additionalProperties": false
+        },
+        "synchronization": {
+          "type": "object",
+          "required": ["accept_start_offset_ms", "reject_start_offset_ms"],
+          "properties": {
+            "accept_start_offset_ms": {"type": "number", "minimum": 0, "maximum": 5000},
+            "reject_start_offset_ms": {"type": "number", "minimum": 0, "maximum": 5000}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "coupling": {
+      "type": "object",
+      "required": ["status", "coincidence_window_ms", "permutation_count"],
+      "properties": {
+        "status": {"const": "exploratory"},
+        "coincidence_window_ms": {"type": "integer", "minimum": 1, "maximum": 5000},
+        "permutation_count": {"type": "integer", "minimum": 1, "maximum": 100000}
+      },
+      "additionalProperties": false
+    }
   },
   "additionalProperties": false
 }

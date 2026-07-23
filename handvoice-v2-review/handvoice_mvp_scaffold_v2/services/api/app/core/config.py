@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     # unset once real operators exist; the API always fails closed without a
     # valid operator key.
     bootstrap_key: str | None = None
+    # Localhost demonstration convenience only. Production remains fail-closed.
+    demo_bypass_operator_auth: bool = False
     auto_create_schema: bool = True
     maximum_media_bytes: int = 64 * 1024 * 1024
 

@@ -4,56 +4,146 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#071d2b" />
-    <title>HandVoice Capture</title>
+    <title>HandVoice guided capture</title>
   </head>
   <body>
-    <main>
+    <a class="skip-link" href="#workflow">Skip to capture workflow</a>
+    <main id="workflow">
       <header>
-        <p class="eyebrow">Synchronized functional measurement</p>
+        <p class="eyebrow">Staff-assisted functional measurement</p>
         <h1>HandVoice</h1>
-        <p class="lede">Three tasks. Fifteen seconds each. No diagnosis.</p>
+        <p class="lede">One synchronized view of hand and speech rhythm. Research demonstrator only&mdash;no diagnosis.</p>
+        <p class="demo-warning" role="note"><strong>Demo safeguard:</strong> synthetic or prerecorded material only. Do not record a real person.</p>
       </header>
 
+      <nav class="progress" aria-label="Session progress">
+        <ol>
+          <li class="current" data-progress="setup" data-label="1. Set up">1. Set up</li>
+          <li data-progress="ready" data-label="2. Check">2. Check</li>
+          <li data-progress="capture" data-label="3. Capture">3. Capture</li>
+          <li data-progress="report" data-label="4. Review">4. Review</li>
+        </ol>
+      </nav>
+
       <section class="panel operator-setup" hidden id="operator-setup" aria-labelledby="operator-title">
-        <h2 id="operator-title">Operator setup</h2>
-        <p class="hint">Enter the operator key once for this device. It is stored locally and reused for every participant &mdash; participants never enter a key.</p>
-        <label>Operator key <input id="operator-key" type="password" autocomplete="off" /></label>
-        <button id="save-operator" type="button">Save on this device</button>
+        <p class="step-label">Staff only</p>
+        <h2 id="operator-title">Unlock this operator device</h2>
+        <p class="hint" id="operator-key-hint">Enter the study operator key. Participants never enter or see this key.</p>
+        <label>Operator key <input id="operator-key" type="password" autocomplete="off" required aria-describedby="operator-key-hint operator-key-error" /></label>
+        <p class="field-error" id="operator-key-error" role="alert" hidden></p>
+        <button id="save-operator" type="button">Unlock device</button>
       </section>
 
-      <section class="panel setup" aria-labelledby="setup-title">
-        <h2 id="setup-title">Start a session</h2>
+      <section class="panel setup" hidden id="session-setup" aria-labelledby="setup-title">
+        <p class="step-label">Step 1 of 4</p>
+        <h2 id="setup-title">Prepare the participant</h2>
         <p class="operator-status" id="operator-status" aria-live="polite"></p>
-        <label>Study ID <input id="study-id" value="HV-FEASIBILITY" maxlength="100" /></label>
-        <label>Participant reference <input id="participant-ref" placeholder="e.g. demo-001" maxlength="255" /></label>
-        <button id="start-session" type="button">Connect camera and create session</button>
+        <p class="hint">Fields marked required must be completed before the device check.</p>
+        <label>Study ID (required) <input id="study-id" value="HV-DEMO" maxlength="100" required aria-describedby="study-id-error" /></label>
+        <p class="field-error" id="study-id-error" role="alert" hidden></p>
+        <label>Participant code (required) <input id="participant-ref" placeholder="e.g. demo-001" maxlength="255" required aria-describedby="participant-ref-error" /></label>
+        <p class="field-error" id="participant-ref-error" role="alert" hidden></p>
+        <div class="notice">
+          <h3>Before you continue</h3>
+          <ul>
+            <li>This prototype measures performance during three short tasks; it does not diagnose disease.</li>
+            <li>Only a study code is entered here. Do not enter a name, health history, or contact details.</li>
+            <li>The participant may stop at any time.</li>
+            <li>For camera consistency, tapping tasks use the <strong>right hand only</strong>.</li>
+          </ul>
+        </div>
+        <label class="check-row"><input id="privacy-confirmed" type="checkbox" required aria-describedby="privacy-confirmed-error" /> I have explained the protocol, privacy limits, and right to stop. (required)</label>
+        <p class="field-error" id="privacy-confirmed-error" role="alert" hidden></p>
+        <p class="field-error" id="setup-error" role="alert" hidden></p>
+        <button id="start-readiness" type="button" aria-describedby="setup-error">Check camera and microphone</button>
         <button id="change-operator" class="link-button" type="button" hidden>Change operator key</button>
       </section>
 
-      <section class="capture-grid" hidden id="capture-area">
-        <div class="video-shell">
-          <video id="preview" autoplay muted playsinline></video>
-          <canvas id="overlay"></canvas>
-          <div class="timer" id="timer" aria-live="polite">Ready</div>
+      <section class="panel readiness" hidden id="readiness" aria-labelledby="readiness-title">
+        <p class="step-label">Step 2 of 4</p>
+        <h2 id="readiness-title" tabindex="-1">Check the recording setup</h2>
+        <p>Hold the phone steady in landscape. The participant&rsquo;s right hand should be centred and well lit.</p>
+        <div class="readiness-grid">
+          <div class="video-shell readiness-preview">
+            <video class="preview" autoplay muted playsinline aria-hidden="true"></video>
+            <canvas class="overlay" aria-hidden="true"></canvas>
+            <div class="hand-guide" aria-hidden="true"><span>RIGHT HAND ZONE</span></div>
+          </div>
+          <fieldset>
+            <legend>Operator check</legend>
+            <label class="check-row"><input class="readiness-check" type="checkbox" /> Right hand is fully visible inside the guide</label>
+            <label class="check-row"><input class="readiness-check" type="checkbox" /> Lighting is even; the hand is not blurred</label>
+            <label class="check-row"><input class="readiness-check" type="checkbox" /> Room is quiet and the participant can be heard</label>
+          </fieldset>
         </div>
-        <aside class="panel task-panel">
-          <p class="task-code" id="task-code">T01</p>
-          <h2 id="task-name">Right-hand tapping</h2>
-          <p id="task-instruction"></p>
-          <ol id="task-list"></ol>
-          <button id="record-task" type="button">Record current task</button>
-        </aside>
+        <p id="readiness-hand-status" class="status-line" role="status" aria-live="polite" aria-atomic="true">Waiting to check the participant&rsquo;s right-hand position.</p>
+        <p id="device-status" class="status-line" role="status">Waiting for device access.</p>
+        <p class="field-error" id="readiness-error" role="alert" hidden></p>
+        <button id="create-session" type="button" aria-describedby="readiness-error" disabled>Create session</button>
       </section>
 
-      <section class="panel status-panel" aria-live="polite">
-        <h2>Status</h2>
-        <p id="status">Waiting to begin.</p>
-        <div id="results" hidden></div>
+      <section hidden id="capture-area" aria-labelledby="task-name">
+        <div class="capture-grid">
+          <div class="video-shell capture-preview">
+            <video class="preview" autoplay muted playsinline aria-hidden="true"></video>
+            <canvas class="overlay" aria-hidden="true"></canvas>
+            <div class="hand-guide" aria-hidden="true"><span>RIGHT HAND ZONE</span></div>
+            <div class="phase-card">
+              <strong id="phase-label">Ready</strong>
+              <span id="timer" aria-hidden="true">15.0 s</span>
+            </div>
+          </div>
+          <aside class="panel task-panel">
+            <p class="step-label">Step 3 of 4</p>
+            <p class="task-code" id="task-code">T01</p>
+            <h2 id="task-name" tabindex="-1">Right-hand tapping</h2>
+            <p class="instruction" id="task-instruction"></p>
+            <p class="practice" id="task-practice"></p>
+            <label class="check-row"><input id="practice-complete" type="checkbox" /> Participant completed the practice</label>
+            <label class="check-row"><input id="operator-ready" type="checkbox" /> I confirmed the participant is ready</label>
+            <ol id="task-list" aria-label="Three capture tasks"></ol>
+            <button id="record-task" type="button" disabled>Record this task</button>
+            <button id="stop-capture" class="danger" type="button" hidden>Stop capture and end session</button>
+            <p class="hint">Keep this screen visible and unlocked for the full 15 seconds.</p>
+            <p class="hint"><strong>Stop immediately</strong> for pain, unusual fatigue, dizziness, distress, breathlessness, or whenever the participant asks.</p>
+          </aside>
+        </div>
       </section>
 
-      <footer>
-        Research demonstrator only. Functional measurements are not medical advice and have not been clinically validated.
-      </footer>
+      <section class="panel checkpoint" hidden id="checkpoint" aria-labelledby="checkpoint-title" aria-busy="false">
+        <p class="step-label">Quality checkpoint</p>
+        <h2 id="checkpoint-title" tabindex="-1">Recording check</h2>
+        <p id="checkpoint-status" class="decision" role="status"></p>
+        <p id="checkpoint-guidance" role="status" aria-live="polite" aria-atomic="true"></p>
+        <ul id="quality-reasons"></ul>
+        <dl id="quality-values" class="quality-values"></dl>
+        <div class="button-row">
+          <button id="checkpoint-primary" type="button">Continue</button>
+          <button id="checkpoint-secondary" class="secondary" type="button">End session</button>
+        </div>
+      </section>
+
+      <section class="panel report" hidden id="report" aria-labelledby="report-title">
+        <p class="step-label">Step 4 of 4</p>
+        <h2 id="report-title" tabindex="-1">Synchronized session report</h2>
+        <p>These results describe performance during this session. They do not indicate a diagnosis, risk, or disease severity.</p>
+        <div id="results"></div>
+        <div class="timeline-shell">
+          <iframe id="timeline" sandbox="" title="Synchronized hand and speech event timeline"></iframe>
+        </div>
+        <div class="button-row">
+          <button id="new-session" type="button">Start another participant</button>
+          <button id="end-session" class="secondary" type="button">End and close devices</button>
+        </div>
+      </section>
+
+      <section class="panel status-panel">
+        <h2 class="visually-hidden">Session status</h2>
+        <p id="status" role="status">Waiting to begin.</p>
+      </section>
+      <p id="phase-announcement" class="visually-hidden" aria-live="assertive"></p>
+
+      <footer>Research demonstrator only. Functional measurements are not medical advice and have not been clinically validated.</footer>
     </main>
     <script type="module" src="/src/app.ts"></script>
   </body>

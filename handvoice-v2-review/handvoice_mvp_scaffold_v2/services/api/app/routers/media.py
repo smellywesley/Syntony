@@ -8,12 +8,12 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from services.api.app.core.config import get_settings
 from services.api.app.core.security import require_operator
+from services.api.app.models.entities import Operator
 from services.api.app.schemas.api import MediaUploadRead
 
 router = APIRouter(
     prefix="/v1/media",
     tags=["media"],
-    dependencies=[Depends(require_operator)],
 )
 
 ALLOWED_SUFFIXES = {".mp4", ".webm", ".mov"}
@@ -21,7 +21,10 @@ CHUNK_BYTES = 1024 * 1024
 
 
 @router.post("", response_model=MediaUploadRead, status_code=status.HTTP_201_CREATED)
-async def upload_media(file: UploadFile = File(...)) -> MediaUploadRead:
+async def upload_media(
+    file: UploadFile = File(...),
+    operator: Operator = Depends(require_operator),
+) -> MediaUploadRead:
     suffix = Path(file.filename or "capture.webm").suffix.lower()
     if suffix not in ALLOWED_SUFFIXES:
         raise HTTPException(status_code=415, detail="media must be MP4, WebM, or MOV")
@@ -29,7 +32,7 @@ async def upload_media(file: UploadFile = File(...)) -> MediaUploadRead:
     settings = get_settings()
     root = settings.storage_root.resolve()
     root.mkdir(parents=True, exist_ok=True)
-    storage_key = f"incoming/{uuid4().hex}{suffix}"
+    storage_key = f"incoming/{operator.id.hex}_{uuid4().hex}{suffix}"
     destination = (root / storage_key).resolve()
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.with_suffix(f"{destination.suffix}.partial")

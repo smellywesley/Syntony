@@ -7,12 +7,16 @@
     "prepare-assets": "node scripts/prepare-assets.mjs",
     "build": "npm run prepare-assets && tsc --noEmit && vite build",
     "dev": "npm run prepare-assets && vite",
-    "test": "vitest run"
+    "dev:e2e": "vite --mode e2e --host 127.0.0.1 --port 4174",
+    "test": "vitest run --config vitest.config.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:repeat": "playwright test --repeat-each=5"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "0.10.35"
   },
   "devDependencies": {
+    "@playwright/test": "1.55.0",
     "typescript": "5.9.3",
     "vite": "7.3.6",
     "vitest": "4.1.10"

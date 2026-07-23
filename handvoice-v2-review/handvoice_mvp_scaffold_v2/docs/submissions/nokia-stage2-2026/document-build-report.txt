@@ -1,0 +1,6 @@
+PDF page-count check: PASS (1 page(s))
+Proposal word-count check: PASS (550 words; target 550-650).
+DOCX requested font: Aptos, 12 pt, single-spaced, A4.
+PDF review font: Helvetica, 12 pt because Aptos is unavailable in the build runtime.
+FINAL GATE: export the DOCX to PDF on a machine with Aptos and confirm exactly one page.
+CONTENT GATE: draft remains non-submittable until OPEN evidence fields are resolved.

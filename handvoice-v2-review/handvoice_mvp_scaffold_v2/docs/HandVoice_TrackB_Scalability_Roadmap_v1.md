@@ -28,8 +28,8 @@ capability add.
   still accepted). Keys are revocable per operator.
 - Bootstrap seeding (`HANDVOICE_BOOTSTRAP_KEY`) creates the first operator;
   the API otherwise fails closed.
-- Capture app stores the operator key once per device (localStorage);
-  **participants never enter a credential**.
+- Capture app keeps the operator key in memory only for the active browser
+  session and clears it on end; **participants never enter a credential**.
 
 ### Acoustic voice features (shipped in this iteration)
 `pipelines/audio/acoustic.py` adds a dependency-light (numpy-only) acoustic

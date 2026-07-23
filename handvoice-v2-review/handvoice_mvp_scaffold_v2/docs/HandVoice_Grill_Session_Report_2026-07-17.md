@@ -1,10 +1,16 @@
 # Grill Session Report - HandVoice - 17 July 2026
 
+> **Historical review, superseded for scheduling.** This report assessed a public
+> ICBME abstract route. The governing deliverable is now Nokia Stage 2; see
+> `docs/submissions/nokia-stage2-2026/requirements-checklist.md`. ICBME remains a
+> scientific-quality benchmark, not the current submission path.
+
 ## Verdict
 
 **Build the validation prototype; do not present it as a validated biomedical product.** The synchronized capture and measurement stack is executable and technically defensible, but the absence of ethics approval and human-participant data blocks claims about older adults, Parkinson's disease, clinical validity, or diagnostic performance.
 
-The ICBME 2026 abstract deadline was 14 July 2026 and no submission was made. The current build can support a later demo, internal review, or future paper, but it cannot retroactively become an accepted ICBME 2026 submission. Official references: [Call for Abstracts](https://icbme.org.sg/2026/call-for-abstracts/) and [Conference Themes](https://icbme.org.sg/2026/themes/).
+The original public-ICBME timing conclusion remains historically accurate for that
+route, but it no longer governs the Nokia Stage 2 plan.
 
 ## 1. Project Summary
 
@@ -27,7 +33,7 @@ HandVoice measures synchronized right-hand tapping and `/pa-ta-ka/` speech durin
 2. **Speech segmentation is a baseline, not phonetic validation:** energy bursts can confuse noise, breath and syllables. Fix: build an annotated DDK benchmark before claiming speech accuracy.
 3. **Single API key:** acceptable for a local demo but unsuitable for participant data or multi-user deployment. Fix: scoped study accounts, authorization, retention policy and audit controls before real data.
 4. **Synthetic validation is deliberately easy to interpret:** it proves invariance under specified perturbations, not ecological validity. Fix: add prerecorded bench media, then approved human data.
-5. **Conference timing:** the ICBME abstract deadline has passed without submission. Fix: target the next eligible venue or contact organizers without assuming an exception.
+5. **Programme timing:** Nokia Stage 2 rules and dates must be verified from the current organiser portal/email before submission. Fix: close every OPEN row in the controlled requirements checklist.
 
 ## 4. Open Questions
 
@@ -122,4 +128,3 @@ The largest risk is claim inflation—presenting clean synthetic results as evid
 - Validated: deterministic tap detection under the frozen perturbation set and DTC arithmetic.
 - Still assumed: older-adult usability, real-world CV/audio validity, repeatability and clinical meaning.
 - Decision: remain an engineering-validation prototype; no diagnostic or agentic clinical decisions.
-

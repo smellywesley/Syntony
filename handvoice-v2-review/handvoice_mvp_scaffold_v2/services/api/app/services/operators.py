@@ -27,6 +27,13 @@ def resolve_operator(db: Session, raw_key: str) -> Operator | None:
     return operator
 
 
+def resolve_demo_operator(db: Session) -> Operator | None:
+    """Return the active bootstrap operator for an explicitly configured demo."""
+    return db.scalar(
+        select(Operator).where(Operator.label == "bootstrap", Operator.active.is_(True))
+    )
+
+
 def create_operator(
     db: Session,
     *,

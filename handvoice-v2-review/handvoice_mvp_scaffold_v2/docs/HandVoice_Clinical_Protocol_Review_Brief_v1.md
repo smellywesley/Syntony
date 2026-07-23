@@ -84,13 +84,16 @@ pathologist, `[Eng]` = engineering (implements once decided).
 
 ## D6 — Capture frame rate `[Neuro] [Eng]`
 
-- **Current:** browser samples landmarks ~every 66 ms (~15 fps effective).
-- **Options:** (a) keep ~15 fps; (b) raise to 30 fps; (c) 60 fps.
-- **Measurement consequence:** parkinsonian tapping reaches 3–6 Hz; at ~15 fps a
-  6 Hz tap gets ~2.5 samples/cycle — a real Nyquist ceiling for peak timing and
-  amplitude accuracy. MediaPipe tapping validity work samples at 30/60/120 fps
-  and treats sub-30 fps as a limitation. Raising the rate is largely an
-  engineering/hardware decision but has direct physiological measurement impact.
+- **Current:** browser targets one landmark sample every 30 ms (~33 fps), but
+  achieved rate is measured per capture and remains device-dependent. QC accepts
+  ≥24 fps, reviews 20–24 fps and retries ≤20 fps.
+- **Options:** (a) retain the ~33 fps target and restrict unsupported devices;
+  (b) target 60 fps on validated devices; (c) revise thresholds only with
+  measurement evidence.
+- **Measurement consequence:** tapping may reach 3–6 Hz, so lower achieved rates
+  reduce samples per cycle and degrade peak timing and amplitude estimates.
+  Fifteen fps remains a tested synthetic degradation scenario, not the current
+  capture target. Any threshold change needs clinician and engineering review.
 - **Decision:** ________________________
 
 ---

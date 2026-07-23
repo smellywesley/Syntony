@@ -269,7 +269,10 @@ The competition prototype is ready for demonstration only when:
 
 ## 17. Current verified implementation status
 
-The revised validation prototype has passed 33 automated backend and integration tests, plus 2 capture-web tests, covering:
+The complete automated Python and capture-web suites, synthetic validation and
+capture-web production build must pass before packaging. Avoid freezing a test
+count in this controlling document because the reliability suite grows with
+each accepted failure mode. Current coverage includes:
 
 - Authentication
 - Three-task protocol creation

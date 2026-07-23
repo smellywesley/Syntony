@@ -32,9 +32,13 @@ Outputs are hand rhythm, DDK rhythm, bidirectional DTC and an exploratory synchr
 
 Coupling is not the primary competition endpoint and must not be interpreted clinically. It survives only as an exploratory visualization and feature.
 
-## ADR-009 — Coarse local security only
+## ADR-009 — Per-operator local security boundary
 
-All `/v1` routes require an API key. Media keys are resolved inside a configured root and verified by checksum and `ffprobe`. Multi-user ownership, presigned cloud upload and clinical authorization remain future work.
+All `/v1` routes require a bearer key validated against hashed, independently
+revocable operator/site records; the legacy header remains compatible. Media
+keys resolve inside a configured root and are verified by checksum and
+`ffprobe`. Presigned cloud upload and clinical-grade authorization remain future
+work.
 
 ## ADR-010 - Local browser landmarks
 
@@ -43,3 +47,16 @@ The capture app runs MediaPipe hand landmarking locally and submits timestamped 
 ## ADR-011 - Engineering claims only
 
 Synthetic perturbation tests validate deterministic software behavior against known ground truth. Without approved human-participant data, they do not validate older-adult usability, disease discrimination, clinical constructs, or diagnostic performance.
+
+## ADR-012 — Deterministic capture quality is authoritative
+
+Versioned thresholds decide whether a recording is accepted, retried or needs
+operator review. A language model may not change thresholds, measurements or
+acceptance. Rejected media is removed from the contained local store and the
+task remains pending.
+
+## ADR-013 — Staff-assisted Stage 2 workflow
+
+A trained operator controls the phone and guides the participant. The interface
+separates staff-only setup from participant-facing task instructions. Home
+self-administration remains outside Stage 2.

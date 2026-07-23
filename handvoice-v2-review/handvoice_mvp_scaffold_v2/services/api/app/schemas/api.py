@@ -21,6 +21,14 @@ class ParticipantRead(BaseModel):
     created_at: datetime
 
 
+class PrivacyDeletionRead(BaseModel):
+    participant_id: UUID
+    deleted_session_count: int
+    deleted_recording_count: int
+    deleted_media_count: int
+    participant_retained_as_withdrawn: bool
+
+
 class SessionCreate(BaseModel):
     participant_id: UUID
     protocol_version: str = "1.1.0"
@@ -103,6 +111,31 @@ class MeasurementSubmission(BaseModel):
     landmark_frames: list[LandmarkFrameInput] = Field(default_factory=list, max_length=2000)
     voiced_intervals: list[IntervalInput] = Field(default_factory=list, max_length=1000)
     ddk_event_ms: list[int] = Field(default_factory=list, max_length=1000)
+    capture_interrupted: bool = False
+
+
+class MeasurementRead(BaseModel):
+    recording_id: UUID | None
+    status: Literal["analyzed_synchronously", "capture_not_accepted"]
+    quality_decision: Literal["accept", "retry", "review_needed"]
+    reason_codes: list[
+        Literal[
+            "low_frame_rate",
+            "low_valid_frame_fraction",
+            "hand_out_of_guide",
+            "wrong_hand",
+            "low_audio_snr",
+            "audio_clipping",
+            "av_start_offset",
+            "audio_decode_failed",
+            "speech_not_detected",
+            "insufficient_motor_events",
+            "insufficient_ddk_events",
+            "capture_interrupted",
+        ]
+    ]
+    measured_quality: dict[str, float | None]
+    guidance_key: str
 
 
 class MediaUploadRead(BaseModel):
@@ -119,6 +152,11 @@ class RepeatTaskRead(BaseModel):
 class HealthRead(BaseModel):
     status: str
     environment: str
+
+
+class ReadinessRead(BaseModel):
+    status: Literal["ready", "not_ready"]
+    components: dict[str, bool]
 
 
 class SessionReport(BaseModel):
